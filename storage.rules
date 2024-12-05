@@ -1,0 +1,62 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isMachineOwner(machineId) {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/machines/$(machineId)) &&
+        get(/databases/$(database)/documents/machines/$(machineId)).data.ownerId == request.auth.uid;
+    }
+
+    // Machine images - allow owners to manage their machine images
+    match /Bolt/machines/{machineId}/{imageId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isMachineOwner(machineId);
+      allow update: if isAuthenticated() && isMachineOwner(machineId);
+      allow delete: if isAuthenticated() && isMachineOwner(machineId);
+    }
+
+    // User avatars - allow users to manage their own avatars
+    match /Bolt/avatars/{userId}/{imageId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    // Content images - allow authenticated users to manage content
+    match /Bolt/content/{contentType}/{imageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Banners - allow authenticated users to manage banners
+    match /Bolt/banners/{imageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Categories - allow authenticated users to manage category images
+    match /Bolt/categories/{imageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Temporary files - allow authenticated users to manage temp files
+    match /Bolt/temp/{imageId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+  }
+}

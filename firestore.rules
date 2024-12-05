@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Funções auxiliares
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isCompanyUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.type == 'company';
+    }
+
+    // Regras para conteúdo do site
+    match /siteContent/{contentId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isCompanyUser();
+    }
+
+    // Regras para máquinas
+    match /machines/{machineId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        (resource == null || resource.data.ownerId == request.auth.uid);
+      allow delete: if isAuthenticated() && 
+        resource.data.ownerId == request.auth.uid;
+    }
+    
+    // Regras para usuários
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if false;
+    }
+
+    // Regras para orçamentos
+    match /quotes/{quoteId} {
+      allow read: if isAuthenticated() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid
+      );
+      allow delete: if false;
+    }
+
+    // Regras para notificações
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+  }
+}

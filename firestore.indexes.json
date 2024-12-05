@@ -1,0 +1,30 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "siteContent",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "machines",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "productVideos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
