@@ -2,8 +2,8 @@ import { ref, listAll, deleteObject } from 'firebase/storage';
 import { storage } from './firebase';
 import Logger from './logger';
 
-// Base storage path - remove gs:// prefix since it's not needed
-const STORAGE_BASE = 'Bolt';
+// Base storage path - use the correct bucket URL
+const STORAGE_BASE = 'https://firebasestorage.googleapis.com/v0/b/bolt-2-8d1dd.firebasestorage.app';
 
 // Storage structure definition
 export const STORAGE_PATHS = {
@@ -21,7 +21,7 @@ export async function initializeStorageStructure() {
     Logger.info('Starting storage structure verification');
     
     // Create a test file to verify permissions
-    const testRef = ref(storage, `${STORAGE_BASE}/test.txt`);
+    const testRef = ref(storage, `machines/test.txt`);
     const testBlob = new Blob(['test'], { type: 'text/plain' });
     
     try {
@@ -44,7 +44,7 @@ export async function initializeStorageStructure() {
 // Clean temporary files
 export async function cleanupTempFiles() {
   try {
-    const tempRef = ref(storage, STORAGE_PATHS.temp);
+    const tempRef = ref(storage, 'temp');
     const tempFiles = await listAll(tempRef);
     
     const deletePromises = tempFiles.items.map(fileRef => deleteObject(fileRef));
@@ -60,5 +60,5 @@ export async function cleanupTempFiles() {
 export function getStoragePath(folder: keyof typeof STORAGE_PATHS, filename: string): string {
   const timestamp = Date.now();
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-  return `${STORAGE_PATHS[folder]}/${timestamp}-${sanitizedFilename}`;
+  return `${folder}/${timestamp}-${sanitizedFilename}`;
 }

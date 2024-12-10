@@ -20,9 +20,14 @@ export async function uploadImage(
     const compressedFile = await compressImage(file);
     console.log('Imagem comprimida com sucesso');
     
+    // Sanitizar nome do arquivo e adicionar timestamp
+    const timestamp = Date.now();
+    const sanitizedFilename = file.name.replace(/[^a-z0-9.-]/gi, '_');
+    const fullPath = `${path}/${timestamp}-${sanitizedFilename}`;
+    
     // Criar referência no storage
-    const storageRef = ref(storage, path);
-    console.log('Referência do storage criada:', path);
+    const storageRef = ref(storage, fullPath);
+    console.log('Referência do storage criada:', fullPath);
     
     // Iniciar upload com progresso
     const uploadTask = uploadBytesResumable(storageRef, compressedFile);

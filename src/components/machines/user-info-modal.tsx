@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Feedback } from '@/components/ui/feedback';
-import { createQuoteRequest } from '@/lib/quotes';
-import { registerUser } from '@/lib/auth';
-import type { Machine } from '@/types';
+import { Button } from '../../components/ui/button';
+import { Feedback } from '../../components/ui/feedback';
+import { createQuoteRequest } from '../../lib/quotes';
+import { registerUser } from '../../lib/auth';
+import type { IMaquina as Machine } from '../../types/machine.types';
 import type { InitialQuoteData } from './initial-quote-modal';
-import type { UserProfile } from '@/types/auth';
+import type { UserProfile } from '../../types/auth';
 
 interface UserInfoModalProps {
   machine: Machine;
@@ -30,6 +30,14 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
     setLoading(true);
 
     try {
+      if (!machine.id) {
+        throw new Error('ID da máquina não encontrado');
+      }
+
+      if (!machine.proprietarioId) {
+        throw new Error('ID do proprietário não encontrado');
+      }
+
       // Criar usuário temporário
       const tempPassword = Math.random().toString(36).slice(-8);
       const userData: Omit<UserProfile, 'uid' | 'createdAt' | 'updatedAt'> = {
@@ -45,9 +53,9 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
       // Criar solicitação de orçamento
       await createQuoteRequest({
         machineId: machine.id,
-        machineName: machine.name,
-        machinePhoto: machine.imageUrl || machine.photoUrl || '',
-        ownerId: machine.ownerId,
+        machineName: machine.nome,
+        machinePhoto: machine.imagemProduto,
+        ownerId: machine.proprietarioId, // Mantido o ownerId usando o proprietarioId da máquina
         requesterId: userProfile.uid,
         startDate: quoteData.startDate,
         endDate: quoteData.endDate,
@@ -60,6 +68,7 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
 
       onSuccess();
     } catch (err: any) {
+      console.error('Erro ao criar solicitação:', err);
       setError(err.message || 'Erro ao processar solicitação');
     } finally {
       setLoading(false);

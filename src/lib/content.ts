@@ -193,7 +193,9 @@ export async function deleteProductVideo(id: string) {
 // Image Upload Functions
 export async function uploadContentImage(file: File, path: string) {
   try {
-    const storageRef = ref(storage, `content/${path}/${Date.now()}-${file.name}`);
+    const timestamp = Date.now();
+    const sanitizedFilename = file.name.replace(/[^a-z0-9.-]/gi, '_');
+    const storageRef = ref(storage, `${path}/${timestamp}-${sanitizedFilename}`);
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);
   } catch (error) {
@@ -207,7 +209,10 @@ export async function deleteContentImage(url: string) {
     if (!url.startsWith('https://firebasestorage.googleapis.com')) {
       return;
     }
-    const storageRef = ref(storage, url);
+    
+    // Extrair o caminho do storage da URL
+    const path = decodeURIComponent(url.split('/o/')[1].split('?')[0]);
+    const storageRef = ref(storage, path);
     await deleteObject(storageRef);
   } catch (error) {
     console.error('Error deleting image:', error);

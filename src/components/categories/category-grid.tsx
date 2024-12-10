@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { WORK_PHASES, MACHINE_SUBCATEGORIES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MostRentedMachines } from './most-rented-machines';
 
@@ -14,7 +14,8 @@ export function CategoryGrid() {
   const renderCard = (
     key: string,
     title: string, 
-    items: string[], 
+    description: string,
+    imageUrl: string,
     href: string
   ) => (
     <Link
@@ -22,36 +23,31 @@ export function CategoryGrid() {
       to={href}
       className="block"
     >
-      <Card hover className="group h-full transition-colors hover:bg-primary-50">
-        <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <div className="flex flex-wrap justify-center gap-1">
-              {items.slice(0, 3).map((item) => (
-                <Badge
-                  key={`${key}-${item}`}
-                  variant="secondary"
-                >
-                  {item}
-                </Badge>
-              ))}
-              {items.length > 3 && (
-                <Badge variant="secondary">
-                  +{items.length - 3}
-                </Badge>
-              )}
-            </div>
+      <Card className="group h-full overflow-hidden">
+        <div className="relative aspect-video w-full">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              target.src = '/placeholder-image.jpg';
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-0 left-0 p-4">
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
+            <p className="mt-1 text-sm text-white/80">{description}</p>
           </div>
-        </CardContent>
+        </div>
       </Card>
     </Link>
   );
 
   return (
     <div className="space-y-12">
-      <div className="mb-8 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Equipamentos para locação</h2>
-        <div className="flex gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <Button
             variant={viewMode === 'popular' ? 'primary' : 'outline'}
             onClick={() => setViewMode('popular')}
@@ -74,12 +70,13 @@ export function CategoryGrid() {
       </div>
 
       {viewMode === 'phases' && (
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(WORK_PHASES).map(([phase, data]) => (
             renderCard(
               `phase-${phase}`,
               phase,
-              data.machines,
+              'Máquinas para a fase de ' + phase.toLowerCase(),
+              data.bannerUrl || '/images/phases/' + phase.toLowerCase().replace(/\s+/g, '-') + '.jpg',
               `/phases/${phase.toLowerCase().replace(/\s+/g, '-')}`
             )
           ))}
@@ -87,20 +84,23 @@ export function CategoryGrid() {
       )}
 
       {viewMode === 'type' && (
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
-          {Object.entries(MACHINE_SUBCATEGORIES).map(([category, machines]) => (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(MACHINE_SUBCATEGORIES).map(([category, data]) => (
             renderCard(
               `type-${category}`,
               category,
-              machines,
-              `/categories/construction?type=${category}`
+              'Máquinas para trabalhos de ' + category.toLowerCase(),
+              '/images/categories/' + category.toLowerCase().replace(/\s+/g, '-') + '.jpg',
+              `/categories/cat-${category.toLowerCase().replace(/\s+/g, '-')}`
             )
           ))}
         </div>
       )}
 
       {viewMode === 'popular' && (
-        <MostRentedMachines />
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <MostRentedMachines />
+        </div>
       )}
     </div>
   );

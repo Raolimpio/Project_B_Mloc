@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { Share2 } from 'lucide-react';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
-import { Button } from '@/components/ui/button';
-import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/contexts/auth-context';
-import { MACHINE_CATEGORIES, DEFAULT_CATEGORY_IMAGE } from '@/lib/constants';
-import { InitialQuoteModal } from '@/components/machines/initial-quote-modal';
-import { UserInfoModal } from '@/components/machines/user-info-modal';
-import { QuoteSuccessModal } from '@/components/machines/quote-success-modal';
-import type { Machine } from '@/types';
+import { Header } from '../../components/layout/header';
+import { Footer } from '../../components/layout/footer';
+import { Button } from '../../components/ui/button';
+import { Breadcrumb } from '../../components/ui/breadcrumb';
+import { db } from '../../lib/firebase';
+import { useAuth } from '../../contexts/auth-context';
+import { MACHINE_CATEGORIES } from '../../lib/constants';
+import { InitialQuoteModal } from '../../components/machines/initial-quote-modal';
+import { UserInfoModal } from '../../components/machines/user-info-modal';
+import { QuoteSuccessModal } from '../../components/machines/quote-success-modal';
+import type { IMaquina as Machine } from '../../types/machine.types';
 
 export default function MachineDetailsPage() {
   const { id } = useParams();
@@ -66,19 +66,21 @@ export default function MachineDetailsPage() {
     );
   }
 
-  const category = MACHINE_CATEGORIES.find((cat) => cat.id === machine.category);
+  // Pegar a primeira categoria do array para breadcrumb
+  const categoryId = machine.categorias?.[0];
+  const category = MACHINE_CATEGORIES.find((cat: { id: string }) => cat.id === categoryId);
   const breadcrumbItems = [
     { label: 'Categorias', href: '/categories' },
-    { label: category?.name || 'Categoria', href: `/categories/${machine.category}` },
-    { label: machine.name },
+    { label: category?.nome || 'Categoria', href: `/categories/${categoryId}` },
+    { label: machine.nome },
   ];
 
   const handleShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: machine.name,
-          text: machine.shortDescription,
+          title: machine.nome,
+          text: machine.descricaoBreve,
           url: window.location.href,
         });
       } catch (err) {
@@ -88,17 +90,14 @@ export default function MachineDetailsPage() {
   };
 
   const handleRequestQuote = () => {
-    if (!userProfile) {
-      setShowUserInfoModal(true);
-    } else {
-      setShowInitialQuoteModal(true);
-    }
+    setShowInitialQuoteModal(true);
   };
 
   const handleQuoteNext = (data: any) => {
     setQuoteData(data);
+    setShowInitialQuoteModal(false);
+    
     if (!userProfile) {
-      setShowInitialQuoteModal(false);
       setShowUserInfoModal(true);
     } else {
       setShowSuccessModal(true);
@@ -115,52 +114,58 @@ export default function MachineDetailsPage() {
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
               {/* Product Image */}
-              <div className="mb-8 overflow-hidden rounded-lg bg-white p-4 shadow-sm">
-                <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                  <img
-                    src={machine.imageUrl || machine.photoUrl || DEFAULT_CATEGORY_IMAGE}
-                    alt={machine.name}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = DEFAULT_CATEGORY_IMAGE;
-                    }}
-                  />
-                </div>
+              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
+                <img
+                  src={machine.imagemProduto}
+                  alt={machine.nome}
+                  className="h-full w-full object-cover"
+                />
               </div>
 
               {/* Description */}
               <div className="mb-8 rounded-lg bg-white p-6 shadow-sm">
-                <h1 className="mb-2 text-3xl font-bold">{machine.name}</h1>
-                <p className="mb-4 text-lg text-gray-600">{machine.shortDescription}</p>
                 <div className="prose max-w-none">
-                  <p className="text-gray-600">{machine.longDescription}</p>
+                  <p className="text-gray-600">{machine.descricao}</p>
                 </div>
               </div>
 
               {/* Video Section */}
-              <div className="rounded-lg bg-white p-6 shadow-sm">
-                <h2 className="mb-4 text-lg font-semibold">Vídeo do Produto</h2>
-                <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                  <iframe
-                    width="560"
-                    height="315"
-                    src="https://www.youtube.com/embed/m_vedl0aUps?si=lF-zZCUXe5kHdYrb&controls=0"
-                    title={`Vídeo de ${machine.name}`}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                    className="absolute inset-0 h-full w-full"
-                  />
+              {machine.videoProduto && (
+                <div className="rounded-lg bg-white p-6 shadow-sm">
+                  <h2 className="mb-4 text-lg font-semibold">Vídeo do Produto</h2>
+                  <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                    <iframe
+                      width="560"
+                      height="315"
+                      src={machine.videoProduto}
+                      title={`Vídeo de ${machine.nome}`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                      className="absolute inset-0 h-full w-full"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Sidebar */}
             <div>
               <div className="sticky top-4 rounded-lg bg-white p-6 shadow-sm">
-                <h2 className="mb-6 text-lg font-semibold">Faça sua Reserva</h2>
+                <div className="mb-6">
+                  <h2 className="text-3xl font-bold">{machine.nome}</h2>
+                  <p className="mt-2 text-gray-600">{machine.descricaoBreve}</p>
+                  
+                  {machine.precoPromocional && (
+                    <p className="mt-4 text-2xl font-bold text-green-600">
+                      R$ {machine.precoPromocional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      <span className="text-sm text-gray-500">/dia</span>
+                    </p>
+                  )}
+                </div>
+                
+                <h3 className="mb-4 text-lg font-semibold">Faça sua Reserva</h3>
                 
                 <div className="grid gap-4">
                   <Button

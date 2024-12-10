@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBdL5XLoiU8wzAg-HU2G7jGgfeFCA73lTM",
   authDomain: "bolt-2-8d1dd.firebaseapp.com",
   projectId: "bolt-2-8d1dd",
-  storageBucket: "bolt-2-8d1dd.appspot.com",
+  storageBucket: "bolt-2-8d1dd.firebasestorage.app",
   messagingSenderId: "186532032381",
   appId: "1:186532032381:web:34e9cd43e4346f52872614",
   measurementId: "G-JHX234KESM"

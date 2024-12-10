@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, TrendingUp, Users, Package, ChevronRight, Home, UserCircle, Truck, BarChart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Plus, TrendingUp, Users, Package, ChevronRight, Home, UserCircle, Truck, BarChart, Settings } from 'lucide-react';
+import { Button } from '../../components/ui/button';
 import { MachineTable } from './machines/machine-table';
 import { OwnerQuotes } from './quotes/owner-quotes';
 import { ApprovedQuotes } from './quotes/approved-quotes';
@@ -12,21 +12,22 @@ import { TopMachines } from './stats/top-machines';
 import { RecentActivity } from './stats/recent-activity';
 import { FinancialPanel } from './stats/financial-panel';
 import { ReportsPanel } from './reports/reports-panel';
-import { getMachinesByOwner } from '@/lib/machines';
-import { getQuotesByOwner } from '@/lib/quotes';
-import type { UserProfile } from '@/types/auth';
-import type { Machine } from '@/types';
-import type { Quote } from '@/types/quote';
+import { CategoryManager } from './categories/category-manager';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import type { UserProfile } from '../../types/auth';
+import type { IMaquina } from '../../types/machine.types';
+import type { Quote } from '../../types/quote';
 
 interface OwnerDashboardProps {
   user: UserProfile;
 }
 
-type ActiveView = 'overview' | 'machines' | 'quotes' | 'approved' | 'pickups' | 'financial' | 'reports' | null;
+type ActiveView = 'overview' | 'machines' | 'quotes' | 'approved' | 'pickups' | 'financial' | 'reports' | 'categories' | null;
 
 export function OwnerDashboard({ user }: OwnerDashboardProps) {
   const navigate = useNavigate();
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machines, setMachines] = useState<IMaquina[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<ActiveView>('overview');
@@ -36,12 +37,24 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
       if (!user?.uid) return;
 
       try {
-        const [machinesData, quotesData] = await Promise.all([
-          getMachinesByOwner(user.uid),
-          getQuotesByOwner(user.uid)
-        ]);
-        
+        // Carregar máquinas do proprietário usando o campo proprietarioId
+        const machinesRef = collection(db, 'machines');
+        const machinesQuery = query(machinesRef, where('proprietarioId', '==', user.uid));
+        const machinesSnapshot = await getDocs(machinesQuery);
+        const machinesData = machinesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as IMaquina));
         setMachines(machinesData);
+
+        // Carregar orçamentos do proprietário
+        const quotesRef = collection(db, 'quotes');
+        const quotesQuery = query(quotesRef, where('proprietarioId', '==', user.uid));
+        const quotesSnapshot = await getDocs(quotesQuery);
+        const quotesData = quotesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Quote));
         setQuotes(quotesData);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -81,6 +94,14 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
           </Button>
           <Button 
             variant="outline"
+            onClick={() => setActiveView('categories')}
+            className="flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Gerenciar Categorias
+          </Button>
+          <Button 
+            variant="outline"
             onClick={() => navigate('/profile')}
             className="flex items-center gap-2"
           >
@@ -94,77 +115,79 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
-        <div 
-          className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          onClick={() => setActiveView('machines')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="rounded-full bg-blue-100 p-3">
-              <Package className="h-6 w-6 text-blue-600" />
+      {activeView !== 'categories' && (
+        <div className="grid gap-4 md:grid-cols-5">
+          <div 
+            className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            onClick={() => setActiveView('machines')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="rounded-full bg-blue-100 p-3">
+                <Package className="h-6 w-6 text-blue-600" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
+            <p className="mt-4 text-sm font-medium text-gray-600">Total de Máquinas</p>
+            <p className="mt-1 text-2xl font-semibold">{stats.totalMachines}</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-gray-600">Total de Máquinas</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.totalMachines}</p>
-        </div>
 
-        <div 
-          className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          onClick={() => setActiveView('quotes')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="rounded-full bg-green-100 p-3">
-              <Users className="h-6 w-6 text-green-600" />
+          <div 
+            className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            onClick={() => setActiveView('quotes')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="rounded-full bg-green-100 p-3">
+                <Users className="h-6 w-6 text-green-600" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
+            <p className="mt-4 text-sm font-medium text-gray-600">Orçamentos Ativos</p>
+            <p className="mt-1 text-2xl font-semibold">{stats.activeQuotes}</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-gray-600">Orçamentos Ativos</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.activeQuotes}</p>
-        </div>
 
-        <div 
-          className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          onClick={() => setActiveView('approved')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="rounded-full bg-purple-100 p-3">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
+          <div 
+            className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            onClick={() => setActiveView('approved')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="rounded-full bg-purple-100 p-3">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
+            <p className="mt-4 text-sm font-medium text-gray-600">Orçamentos Aprovados</p>
+            <p className="mt-1 text-2xl font-semibold">{stats.approvedQuotes}</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-gray-600">Orçamentos Aprovados</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.approvedQuotes}</p>
-        </div>
 
-        <div 
-          className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          onClick={() => setActiveView('pickups')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="rounded-full bg-orange-100 p-3">
-              <Truck className="h-6 w-6 text-orange-600" />
+          <div 
+            className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            onClick={() => setActiveView('pickups')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="rounded-full bg-orange-100 p-3">
+                <Truck className="h-6 w-6 text-orange-600" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
+            <p className="mt-4 text-sm font-medium text-gray-600">Solicitações de Coleta</p>
+            <p className="mt-1 text-2xl font-semibold">{stats.pickupRequests}</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-gray-600">Solicitações de Coleta</p>
-          <p className="mt-1 text-2xl font-semibold">{stats.pickupRequests}</p>
-        </div>
 
-        <div 
-          className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          onClick={() => setActiveView('reports')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="rounded-full bg-indigo-100 p-3">
-              <BarChart className="h-6 w-6 text-indigo-600" />
+          <div 
+            className="cursor-pointer rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            onClick={() => setActiveView('reports')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="rounded-full bg-indigo-100 p-3">
+                <BarChart className="h-6 w-6 text-indigo-600" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
+            <p className="mt-4 text-sm font-medium text-gray-600">Relatórios</p>
+            <p className="mt-1 text-2xl font-semibold">Ver Análises</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-gray-600">Relatórios</p>
-          <p className="mt-1 text-2xl font-semibold">Ver Análises</p>
         </div>
-      </div>
+      )}
 
       {activeView === 'overview' && (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -226,6 +249,12 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
       {activeView === 'reports' && (
         <div className="rounded-lg bg-white p-6 shadow-md">
           <ReportsPanel quotes={quotes} />
+        </div>
+      )}
+
+      {activeView === 'categories' && (
+        <div className="rounded-lg bg-white p-6 shadow-md">
+          <CategoryManager />
         </div>
       )}
     </div>

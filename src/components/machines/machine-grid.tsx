@@ -1,18 +1,16 @@
-import { useNavigate } from 'react-router-dom';
 import { MachineCard } from './machine-card';
-import { useAuth } from '@/contexts/auth-context';
-import type { Machine } from '@/types';
+import { IMaquina } from '../../types/machine.types';
+
+// Usando um tipo mais específico apenas com os campos necessários para o grid
+type MachineGridItem = Pick<IMaquina, 'id' | 'nome' | 'descricaoBreve' | 'imagemProduto' | 'precoPromocional'>;
 
 interface MachineGridProps {
-  machines: Machine[];
+  machines: MachineGridItem[];
   loading: boolean;
-  onMachineClick?: (machine: Machine) => void;
+  onMachineClick: (machine: MachineGridItem) => void;
 }
 
 export function MachineGrid({ machines, loading, onMachineClick }: MachineGridProps) {
-  const navigate = useNavigate();
-  const { userProfile } = useAuth();
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -32,25 +30,13 @@ export function MachineGrid({ machines, loading, onMachineClick }: MachineGridPr
     );
   }
 
-  const handleMachineClick = (machine: Machine) => {
-    const isOwner = userProfile?.uid === machine.ownerId;
-    
-    if (isOwner) {
-      navigate(`/machines/edit/${machine.id}`);
-    } else if (onMachineClick) {
-      onMachineClick(machine);
-    } else {
-      navigate(`/machines/${machine.id}`);
-    }
-  };
-
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {machines.map((machine) => (
         <MachineCard
           key={machine.id}
           machine={machine}
-          onRentClick={handleMachineClick}
+          onRentClick={onMachineClick}
         />
       ))}
     </div>

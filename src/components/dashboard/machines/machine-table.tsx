@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2, Search, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { MACHINE_CATEGORIES } from '@/lib/constants';
-import type { Machine } from '@/types';
+import { Button } from '../../../components/ui/button';
+import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
+import { MACHINE_CATEGORIES } from '../../../lib/constants';
+import type { IMaquina } from '../../../types/machine.types';
 
 interface MachineTableProps {
-  machines: Machine[];
+  machines: IMaquina[];
   loading: boolean;
-  onDelete?: (machine: Machine) => void;
+  onDelete?: (machine: IMaquina) => void;
 }
 
 export function MachineTable({ machines, loading, onDelete }: MachineTableProps) {
@@ -17,19 +17,19 @@ export function MachineTable({ machines, loading, onDelete }: MachineTableProps)
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [machineToDelete, setMachineToDelete] = useState<Machine | null>(null);
+  const [machineToDelete, setMachineToDelete] = useState<IMaquina | null>(null);
 
   const filteredMachines = machines.filter(machine => {
     const searchTerms = searchTerm.toLowerCase().split(' ');
-    const searchableText = `${machine.name} ${machine.category} ${machine.subcategory} ${machine.shortDescription}`.toLowerCase();
+    const searchableText = `${machine.nome} ${machine.descricao} ${machine.descricaoBreve}`.toLowerCase();
     
     const matchesSearch = searchTerms.every(term => searchableText.includes(term));
-    const matchesCategory = !selectedCategory || machine.category === selectedCategory;
+    const matchesCategory = !selectedCategory || (Array.isArray(machine.categorias) && machine.categorias.includes(selectedCategory));
 
     return matchesSearch && matchesCategory;
   });
 
-  const handleDeleteClick = (machine: Machine) => {
+  const handleDeleteClick = (machine: IMaquina) => {
     setMachineToDelete(machine);
   };
 
@@ -59,7 +59,7 @@ export function MachineTable({ machines, loading, onDelete }: MachineTableProps)
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="search"
-              placeholder="Buscar por nome, categoria ou descrição..."
+              placeholder="Buscar por nome ou descrição..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-lg border py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
@@ -93,7 +93,7 @@ export function MachineTable({ machines, loading, onDelete }: MachineTableProps)
                   variant={selectedCategory === category.id ? 'primary' : 'outline'}
                   onClick={() => setSelectedCategory(category.id)}
                 >
-                  {category.name}
+                  {category.nome}
                 </Button>
               ))}
             </div>
@@ -109,7 +109,7 @@ export function MachineTable({ machines, loading, onDelete }: MachineTableProps)
                 Máquina
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Categoria
+                Categorias
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                 Status
@@ -125,29 +125,41 @@ export function MachineTable({ machines, loading, onDelete }: MachineTableProps)
                 <td className="whitespace-nowrap px-6 py-4">
                   <div className="flex items-center">
                     <img
-                      src={machine.imageUrl || machine.photoUrl}
-                      alt={machine.name}
+                      src={machine.imagemProduto}
+                      alt={machine.nome}
                       className="h-10 w-10 rounded-lg object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&q=80&w=800';
+                        target.src = '/placeholder-image.jpg';
                       }}
                     />
                     <div className="ml-4">
-                      <div className="font-medium text-gray-900">{machine.name}</div>
-                      <div className="text-sm text-gray-500">{machine.shortDescription}</div>
+                      <div className="font-medium text-gray-900">{machine.nome}</div>
+                      <div className="text-sm text-gray-500">{machine.descricaoBreve}</div>
                     </div>
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  <div className="text-sm text-gray-900">
-                    {MACHINE_CATEGORIES.find(cat => cat.id === machine.category)?.name}
+                  <div className="flex flex-wrap gap-1">
+                    {Array.isArray(machine.categorias) && machine.categorias.map((categoria, index) => (
+                      <span 
+                        key={index}
+                        className="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800"
+                      >
+                        {categoria.replace('cat-', '').replace(/-/g, ' ')}
+                      </span>
+                    ))}
                   </div>
-                  <div className="text-sm text-gray-500">{machine.subcategory}</div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
-                    Disponível
+                  <span 
+                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                      machine.disponivel 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {machine.disponivel ? 'Disponível' : 'Indisponível'}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
@@ -187,7 +199,7 @@ export function MachineTable({ machines, loading, onDelete }: MachineTableProps)
       <ConfirmDialog
         isOpen={!!machineToDelete}
         title="Excluir Máquina"
-        message={`Tem certeza que deseja excluir a máquina "${machineToDelete?.name}"? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir a máquina "${machineToDelete?.nome}"? Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         onConfirm={handleConfirmDelete}

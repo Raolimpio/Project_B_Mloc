@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { X, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Feedback } from '@/components/ui/feedback';
-import type { Machine } from '@/types';
-import type { UserProfile } from '@/types/auth';
+import { Button } from '../ui/button';
+import { Feedback } from '../ui/feedback';
+import type { IMaquina as Machine } from '../../types/machine.types';
+import type { UserProfile } from '../../types/auth';
 
 interface InitialQuoteModalProps {
   machine: Machine;

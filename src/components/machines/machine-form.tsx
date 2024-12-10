@@ -6,7 +6,12 @@ import { Feedback } from '@/components/ui/feedback';
 import { MachineImageManager } from './machine-image-manager';
 import { createMachine, updateMachine } from '@/lib/machines';
 import { useAuth } from '@/contexts/auth-context';
-import { MACHINE_CATEGORIES, WORK_PHASES } from '@/lib/constants';
+import { 
+  MACHINE_CATEGORIES, 
+  WORK_TYPES,
+  CONSTRUCTION_PHASES,
+  APPLICATION_TYPES 
+} from '@/lib/constants';
 import type { Machine } from '@/types';
 
 interface MachineFormProps {
@@ -22,15 +27,13 @@ export function MachineForm({ machine }: MachineFormProps) {
 
   const [formData, setFormData] = useState({
     name: machine?.name || '',
-    category: machine?.category || '',
-    subcategory: machine?.subcategory || '',
+    workType: machine?.workType || '',
     workPhase: machine?.workPhase || '',
+    application: machine?.application || '',
     shortDescription: machine?.shortDescription || '',
     longDescription: machine?.longDescription || '',
     imageUrl: machine?.imageUrl || '',
   });
-
-  const selectedCategory = MACHINE_CATEGORIES.find(cat => cat.id === formData.category);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +42,7 @@ export function MachineForm({ machine }: MachineFormProps) {
       return;
     }
 
-    if (!formData.name || !formData.category || !formData.subcategory || !formData.workPhase) {
+    if (!formData.name || !formData.workType || !formData.workPhase || !formData.application) {
       setError('Por favor, preencha todos os campos obrigatórios');
       return;
     }
@@ -96,41 +99,17 @@ export function MachineForm({ machine }: MachineFormProps) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Categoria</label>
+              <label className="mb-1 block text-sm font-medium">Tipo de Trabalho</label>
               <select
                 required
-                value={formData.category}
-                onChange={(e) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    category: e.target.value,
-                    subcategory: ''
-                  }));
-                }}
+                value={formData.workType}
+                onChange={(e) => setFormData(prev => ({ ...prev, workType: e.target.value }))}
                 className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               >
-                <option value="">Selecione uma categoria</option>
-                {MACHINE_CATEGORIES.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">Subcategoria</label>
-              <select
-                required
-                value={formData.subcategory}
-                onChange={(e) => setFormData(prev => ({ ...prev, subcategory: e.target.value }))}
-                className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
-                disabled={!formData.category}
-              >
-                <option value="">Selecione uma subcategoria</option>
-                {selectedCategory?.subcategories.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
+                <option value="">Selecione o tipo</option>
+                {Object.entries(WORK_TYPES).map(([key, { name }]) => (
+                  <option key={key} value={key}>
+                    {name}
                   </option>
                 ))}
               </select>
@@ -145,9 +124,26 @@ export function MachineForm({ machine }: MachineFormProps) {
                 className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               >
                 <option value="">Selecione a fase</option>
-                {Object.keys(WORK_PHASES).map((phase) => (
-                  <option key={phase} value={phase}>
-                    {phase}
+                {Object.entries(CONSTRUCTION_PHASES).map(([key, { name }]) => (
+                  <option key={key} value={key}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Aplicação</label>
+              <select
+                required
+                value={formData.application}
+                onChange={(e) => setFormData(prev => ({ ...prev, application: e.target.value }))}
+                className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
+              >
+                <option value="">Selecione a aplicação</option>
+                {Object.entries(APPLICATION_TYPES).map(([key, { name }]) => (
+                  <option key={key} value={key}>
+                    {name}
                   </option>
                 ))}
               </select>
@@ -199,9 +195,8 @@ export function MachineForm({ machine }: MachineFormProps) {
         className="w-full" 
         type="submit" 
         disabled={loading}
-        size="lg"
       >
-        {loading ? 'Salvando...' : machine ? 'Salvar Alterações' : 'Criar Anúncio'}
+        {loading ? 'Salvando...' : machine ? 'Atualizar Máquina' : 'Criar Máquina'}
       </Button>
     </form>
   );

@@ -1,11 +1,11 @@
-import { Machine } from '@/types';
-import { Button } from '@/components/ui/button';
+import { IMaquina } from '../../types/machine.types';
+import { Button } from '../../components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 
 interface MachineListProps {
-  machines: Machine[];
+  machines: IMaquina[];
   loading: boolean;
-  onEdit: (machine: Machine) => void;
+  onEdit: (machine: IMaquina) => void;
 }
 
 export function MachineList({ machines, loading, onEdit }: MachineListProps) {
@@ -37,7 +37,7 @@ export function MachineList({ machines, loading, onEdit }: MachineListProps) {
               Máquina
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Categoria
+              Categorias
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               Status
@@ -53,23 +53,40 @@ export function MachineList({ machines, loading, onEdit }: MachineListProps) {
               <td className="whitespace-nowrap px-6 py-4">
                 <div className="flex items-center">
                   <img
-                    src={machine.imageUrl}
-                    alt={machine.name}
+                    src={machine.imagemProduto}
+                    alt={machine.nome}
                     className="h-10 w-10 rounded-lg object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder-image.jpg';
+                    }}
                   />
                   <div className="ml-4">
-                    <div className="font-medium text-gray-900">{machine.name}</div>
-                    <div className="text-sm text-gray-500">{machine.shortDescription}</div>
+                    <div className="font-medium text-gray-900">{machine.nome}</div>
+                    <div className="text-sm text-gray-500">{machine.descricaoBreve}</div>
                   </div>
                 </div>
               </td>
               <td className="whitespace-nowrap px-6 py-4">
-                <div className="text-sm text-gray-900">{machine.category}</div>
-                <div className="text-sm text-gray-500">{machine.subcategory}</div>
+                <div className="flex flex-wrap gap-1">
+                  {machine.categorias.map((categoria, index) => (
+                    <span 
+                      key={index}
+                      className="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800"
+                    >
+                      {categoria.replace('cat-', '').replace(/-/g, ' ')}
+                    </span>
+                  ))}
+                </div>
               </td>
               <td className="whitespace-nowrap px-6 py-4">
-                <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
-                  Disponível
+                <span 
+                  className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                    machine.disponivel 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {machine.disponivel ? 'Disponível' : 'Indisponível'}
                 </span>
               </td>
               <td className="whitespace-nowrap px-6 py-4 text-right">
