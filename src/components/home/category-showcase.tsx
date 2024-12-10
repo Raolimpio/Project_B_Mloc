@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Image } from '../ui/image';
+import { OptimizedImage } from '../ui/optimized-image';
 
 interface Categoria {
   id: string;
@@ -54,60 +54,80 @@ export function CategoryShowcase() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-2 text-gray-600">Carregando categorias...</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {[1, 2, 3].map((index) => (
+          <div key={index} className="relative overflow-hidden rounded-2xl shadow-md">
+            <div className="animate-pulse">
+              <div className="h-64 bg-gray-200" />
+              <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gray-300" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 bg-gray-300 rounded" />
+                    <div className="h-3 w-32 bg-gray-300 rounded" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <section className="bg-gray-50">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {Object.values(gruposCategoria)
-            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-            .map((grupo) => (
-              <Link
-                key={grupo.id}
-                to={`/categories/${grupo.id}`}
-                className="group block relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all"
-              >
-                {/* Banner da categoria */}
-                <div className="relative h-48 w-full">
-                  <Image
-                    src={grupo.bannerUrl}
-                    alt={grupo.nome}
-                    className="w-full h-full transition-transform group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
-                </div>
-                
-                {/* Conteúdo sobreposto */}
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-white p-2 shadow-lg">
-                      <Image
-                        src={grupo.iconeUrl}
-                        alt=""
-                        className="w-full h-full object-contain"
-                        fallbackSrc="/placeholder-icon.jpg"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white">{grupo.nome}</h3>
-                      {grupo.descricao && (
-                        <p className="text-sm text-white/80">{grupo.descricao}</p>
-                      )}
-                    </div>
+    <div className="container mx-auto px-4">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+          Categorias de Equipamentos
+        </h2>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Encontre o equipamento ideal para cada tipo de trabalho
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {Object.values(gruposCategoria)
+          .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+          .map((grupo) => (
+            <Link
+              key={grupo.id}
+              to={`/categories/${grupo.id}`}
+              className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-all duration-300"
+            >
+              {/* Banner da categoria com overlay gradiente */}
+              <div className="relative h-64">
+                <OptimizedImage
+                  src={grupo.bannerUrl}
+                  alt={grupo.nome}
+                  aspectRatio="auto"
+                  className="transition-transform duration-300 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+              </div>
+              
+              {/* Conteúdo sobreposto */}
+              <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                <div className="flex items-center gap-4">
+                  {/* Ícone em um círculo com fundo branco */}
+                  <div className="w-12 h-12 rounded-full bg-white/90 p-2 shadow-lg backdrop-blur-sm">
+                    <OptimizedImage
+                      src={grupo.iconeUrl}
+                      alt=""
+                      aspectRatio="square"
+                      objectFit="contain"
+                      className="h-full w-full"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{grupo.nome}</h3>
+                    <p className="text-sm text-gray-200">{grupo.descricao}</p>
                   </div>
                 </div>
-              </Link>
-            ))}
-        </div>
+              </div>
+            </Link>
+          ))}
       </div>
-    </section>
+    </div>
   );
 }

@@ -1,89 +1,98 @@
-// Fases da Obra (mantido para compatibilidade)
-export const WORK_PHASES = {
-  'Canteiro de obras': {
-    machines: [
-      'Geradores',
-      'Compressores',
-      'Ferramentas Elétricas',
-      'Ferramentas Manuais',
-      'Equipamentos de Segurança'
-    ]
-  },
-  'Cobertura': {
-    machines: [
-      'Andaimes',
-      'Escadas',
-      'Guinchos',
-      'Plataformas Elevatórias'
-    ]
-  },
-  'Fundação': {
-    machines: [
-      'Escavadeiras',
-      'Retroescavadeiras',
-      'Compactadores',
-      'Placas Vibratórias'
-    ]
-  },
-  'Estrutura e alvenaria': {
-    machines: [
-      'Betoneiras',
-      'Vibradores de Concreto',
-      'Bombas de Concreto',
-      'Andaimes',
-      'Escoras',
-      'Formas'
-    ]
-  },
-  'Inst. elétricas e hidrossanitárias': {
-    machines: [
-      'Furadeiras',
-      'Marteletes',
-      'Ferramentas Elétricas',
-      'Equipamentos de Medição'
-    ]
-  },
-  'Esquadrias': {
-    machines: [
-      'Serras',
-      'Furadeiras',
-      'Parafusadeiras',
-      'Ferramentas Manuais'
-    ]
-  },
-  'Revestimento': {
-    machines: [
-      'Lixadeiras',
-      'Misturadores',
-      'Desempenadeiras',
-      'Réguas Vibratórias'
-    ]
-  },
-  'Acabamento': {
-    machines: [
-      'Lixadeiras',
-      'Pinturas',
-      'Compressores',
-      'Ferramentas Manuais'
-    ]
-  },
-  'Jardinagem': {
-    machines: [
-      'Cortadores de Grama',
-      'Roçadeiras',
-      'Motosserras',
-      'Ferramentas de Jardim'
-    ]
-  },
-  'Limpeza': {
-    machines: [
-      'Lavadoras de Alta Pressão',
-      'Aspiradores',
-      'Varredeiras',
-      'Equipamentos de Limpeza'
-    ]
-  }
-};
+/**
+ * @deprecated SISTEMA LEGADO - NÃO USAR
+ * Este sistema de fases de trabalho está depreciado e não deve ser usado em novas implementações.
+ * Em vez disso, use:
+ * - MACHINE_CATEGORIES: Para categorias principais
+ * - WORK_TYPES: Para tipos de trabalho
+ * - CONSTRUCTION_PHASES: Para fases da construção
+ * 
+ * Este código será removido em versões futuras.
+ */
+// export const WORK_PHASES = {
+//   'Canteiro de obras': {
+//     machines: [
+//       'Geradores',
+//       'Compressores',
+//       'Ferramentas Elétricas',
+//       'Ferramentas Manuais',
+//       'Equipamentos de Segurança'
+//     ]
+//   },
+//   'Cobertura': {
+//     machines: [
+//       'Andaimes',
+//       'Escadas',
+//       'Guinchos',
+//       'Plataformas Elevatórias'
+//     ]
+//   },
+//   'Fundação': {
+//     machines: [
+//       'Escavadeiras',
+//       'Retroescavadeiras',
+//       'Compactadores',
+//       'Placas Vibratórias'
+//     ]
+//   },
+//   'Estrutura e alvenaria': {
+//     machines: [
+//       'Betoneiras',
+//       'Vibradores de Concreto',
+//       'Bombas de Concreto',
+//       'Andaimes',
+//       'Escoras',
+//       'Formas'
+//     ]
+//   },
+//   'Inst. elétricas e hidrossanitárias': {
+//     machines: [
+//       'Furadeiras',
+//       'Marteletes',
+//       'Ferramentas Elétricas',
+//       'Equipamentos de Medição'
+//     ]
+//   },
+//   'Esquadrias': {
+//     machines: [
+//       'Serras',
+//       'Furadeiras',
+//       'Parafusadeiras',
+//       'Ferramentas Manuais'
+//     ]
+//   },
+//   'Revestimento': {
+//     machines: [
+//       'Lixadeiras',
+//       'Misturadores',
+//       'Desempenadeiras',
+//       'Réguas Vibratórias'
+//     ]
+//   },
+//   'Acabamento': {
+//     machines: [
+//       'Lixadeiras',
+//       'Pinturas',
+//       'Compressores',
+//       'Ferramentas Manuais'
+//     ]
+//   },
+//   'Jardinagem': {
+//     machines: [
+//       'Cortadores de Grama',
+//       'Roçadeiras',
+//       'Motosserras',
+//       'Ferramentas de Jardim'
+//     ]
+//   },
+//   'Limpeza': {
+//     machines: [
+//       'Lavadoras de Alta Pressão',
+//       'Aspiradores',
+//       'Varredeiras',
+//       'Equipamentos de Limpeza'
+//     ]
+//   }
+// };
 
 // Novas categorias principais
 export const MACHINE_CATEGORIES = [

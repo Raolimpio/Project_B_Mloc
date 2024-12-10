@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 export function Footer() {
   return (
-    <footer className="bg-primary-600 text-white">
+    <footer className="bg-primary-600 text-white mt-auto w-full">
       <div className="container mx-auto px-4 py-12">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -65,24 +65,27 @@ export function Footer() {
           <div>
             <h3 className="mb-4 text-lg font-semibold">Contato</h3>
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center">
-                <MapPin className="mr-2 h-4 w-4" />
-                São Paulo, SP
+              <li className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4" />
+                <span>São Paulo, SP</span>
               </li>
-              <li className="flex items-center">
-                <Phone className="mr-2 h-4 w-4" />
-                (11) 9999-9999
+              <li className="flex items-center space-x-2">
+                <Phone className="h-4 w-4" />
+                <span>(11) 9999-9999</span>
               </li>
-              <li className="flex items-center">
-                <Mail className="mr-2 h-4 w-4" />
-                contato@mariloc.com.br
+              <li className="flex items-center space-x-2">
+                <Mail className="h-4 w-4" />
+                <span>contato@mariloc.com.br</span>
               </li>
             </ul>
           </div>
         </div>
-
-        <div className="mt-12 border-t border-white/20 pt-8 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} Mariloc. Todos os direitos reservados.</p>
+      </div>
+      <div className="border-t border-white/10">
+        <div className="container mx-auto px-4 py-4">
+          <p className="text-center text-sm text-white/60">
+            &copy; {new Date().getFullYear()} Mariloc. Todos os direitos reservados.
+          </p>
         </div>
       </div>
     </footer>

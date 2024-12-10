@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { Header } from '../../components/layout/header';
-import { Footer } from '../../components/layout/footer';
+import { ProductLayout } from '../../components/layout/product-layout';
 import { MachineGrid } from '../../components/machines/machine-grid';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { db } from '../../lib/firebase';
@@ -106,38 +105,42 @@ export default function CategoryPage() {
 
   if (loading) {
     return (
-      <>
-        <Header />
-        <main>
+      <ProductLayout>
+        <main className="flex-1">
           <div className="container mx-auto px-4 py-8">
-            <div className="flex items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <div className="animate-pulse">
+              <div className="h-48 bg-gray-200 rounded-lg mb-8"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-lg p-4 space-y-4">
+                    <div className="h-48 bg-gray-200 rounded-md"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </main>
-        <Footer />
-      </>
+      </ProductLayout>
     );
   }
 
   if (!categoria) {
     return (
-      <>
-        <Header />
-        <main>
+      <ProductLayout>
+        <main className="flex-1">
           <div className="container mx-auto px-4 py-8">
             <p>Categoria não encontrada</p>
           </div>
         </main>
-        <Footer />
-      </>
+      </ProductLayout>
     );
   }
 
   return (
-    <>
-      <Header />
-      <main>
+    <ProductLayout>
+      <main className="flex-1">
         <div className="container mx-auto px-4 py-8">
           {/* Breadcrumbs */}
           <div className="mb-6">
@@ -185,40 +188,20 @@ export default function CategoryPage() {
           {categoria.tipo === 'grupo' && subcategorias.length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-4">Subcategorias</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {subcategorias.map((subcat) => (
                   <Link
                     key={subcat.id}
                     to={`/categories/${subcat.id}`}
-                    className="group block relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all"
+                    className="block p-4 rounded-lg border border-gray-200 hover:border-primary-500 transition-colors"
                   >
-                    {/* Banner da subcategoria */}
-                    <div className="relative h-32 w-full">
+                    <div className="flex items-center gap-3">
                       <img
-                        src={subcat.bannerUrl}
+                        src={subcat.iconeUrl}
                         alt={subcat.nome}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        className="w-10 h-10 object-contain"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
-                    </div>
-                    
-                    {/* Conteúdo sobreposto */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white p-1.5 shadow-lg">
-                          <img
-                            src={subcat.iconeUrl}
-                            alt=""
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-white">{subcat.nome}</h3>
-                          {subcat.descricao && (
-                            <p className="text-sm text-gray-200">{subcat.descricao}</p>
-                          )}
-                        </div>
-                      </div>
+                      <span className="font-medium">{subcat.nome}</span>
                     </div>
                   </Link>
                 ))}
@@ -226,22 +209,10 @@ export default function CategoryPage() {
             </div>
           )}
 
-          <div>
-            <h2 className="text-xl font-semibold mb-4">
-              Máquinas Disponíveis
-              <span className="text-gray-600 text-base font-normal ml-2">
-                ({machines.length} {machines.length === 1 ? 'máquina' : 'máquinas'})
-              </span>
-            </h2>
-            <MachineGrid 
-              machines={machines} 
-              loading={loading} 
-              onMachineClick={handleMachineClick}
-            />
-          </div>
+          {/* Grid de máquinas */}
+          <MachineGrid machines={machines} onMachineClick={handleMachineClick} />
         </div>
       </main>
-      <Footer />
-    </>
+    </ProductLayout>
   );
 }

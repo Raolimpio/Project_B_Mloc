@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
-import { Share2 } from 'lucide-react';
-import { Header } from '../../components/layout/header';
-import { Footer } from '../../components/layout/footer';
+import { Share2, AlertCircle } from 'lucide-react';
+import { ProductLayout } from '../../components/layout/product-layout';
 import { Button } from '../../components/ui/button';
 import { Breadcrumb } from '../../components/ui/breadcrumb';
+import { ProductGallery } from '../../components/machines/product-gallery';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/auth-context';
 import { MACHINE_CATEGORIES } from '../../lib/constants';
@@ -27,20 +27,25 @@ export default function MachineDetailsPage() {
 
   useEffect(() => {
     async function loadMachine() {
-      if (!id) return;
+      if (!id) {
+        navigate('/categories');
+        return;
+      }
 
       try {
-        const docRef = doc(db, 'machines', id);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          setMachine({ id: docSnap.id, ...docSnap.data() } as Machine);
+        const machineDoc = await getDoc(doc(db, 'machines', id));
+        if (machineDoc.exists()) {
+          const machineData = { id: machineDoc.id, ...machineDoc.data() } as Machine;
+          console.log('Machine data:', machineData);
+          setMachine(machineData);
         } else {
-          navigate('/categories');
+          // Se a máquina não existe, deixa machine como null
+          setMachine(null);
         }
       } catch (error) {
         console.error('Erro ao carregar máquina:', error);
-        navigate('/categories');
+        // Em caso de erro, também deixa machine como null
+        setMachine(null);
       } finally {
         setLoading(false);
       }
@@ -49,135 +54,121 @@ export default function MachineDetailsPage() {
     loadMachine();
   }, [id, navigate]);
 
-  if (loading || !machine) {
-    return (
-      <>
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent"></div>
-              <p className="mt-2 text-gray-600">Carregando...</p>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
-
-  // Pegar a primeira categoria do array para breadcrumb
-  const categoryId = machine.categorias?.[0];
-  const category = MACHINE_CATEGORIES.find((cat: { id: string }) => cat.id === categoryId);
-  const breadcrumbItems = [
-    { label: 'Categorias', href: '/categories' },
-    { label: category?.nome || 'Categoria', href: `/categories/${categoryId}` },
-    { label: machine.nome },
-  ];
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: machine.nome,
-          text: machine.descricaoBreve,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.error('Error sharing:', err);
-      }
-    }
-  };
-
-  const handleRequestQuote = () => {
-    setShowInitialQuoteModal(true);
-  };
-
   const handleQuoteNext = (data: any) => {
     setQuoteData(data);
     setShowInitialQuoteModal(false);
-    
-    if (!userProfile) {
-      setShowUserInfoModal(true);
-    } else {
-      setShowSuccessModal(true);
-    }
+    setShowUserInfoModal(true);
   };
 
-  return (
-    <>
-      <Header />
-      <main>
-        <div className="container mx-auto px-4 py-8">
-          <Breadcrumb items={breadcrumbItems} className="mb-6" />
-
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              {/* Product Image */}
-              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
-                <img
-                  src={machine.imagemProduto}
-                  alt={machine.nome}
-                  className="h-full w-full object-cover"
-                />
+  if (loading) {
+    return (
+      <ProductLayout>
+        <main className="flex-1">
+          <div className="container mx-auto px-4 py-8">
+            <div className="animate-pulse">
+              <div className="h-64 bg-gray-200 rounded-lg mb-8"></div>
+              <div className="space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
               </div>
+            </div>
+          </div>
+        </main>
+      </ProductLayout>
+    );
+  }
 
-              {/* Description */}
-              <div className="mb-8 rounded-lg bg-white p-6 shadow-sm">
-                <div className="prose max-w-none">
-                  <p className="text-gray-600">{machine.descricao}</p>
-                </div>
-              </div>
-
-              {/* Video Section */}
-              {machine.videoProduto && (
-                <div className="rounded-lg bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-lg font-semibold">Vídeo do Produto</h2>
-                  <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                    <iframe
-                      width="560"
-                      height="315"
-                      src={machine.videoProduto}
-                      title={`Vídeo de ${machine.nome}`}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      allowFullScreen
-                      className="absolute inset-0 h-full w-full"
-                    />
-                  </div>
-                </div>
-              )}
+  if (!machine) {
+    return (
+      <ProductLayout>
+        <main className="flex-1">
+          <div className="container mx-auto px-4 py-8">
+            {/* Breadcrumbs */}
+            <div className="mb-6">
+              <Breadcrumb
+                items={[
+                  {
+                    label: 'Categorias',
+                    href: '/categories'
+                  },
+                  {
+                    label: 'Máquina não encontrada'
+                  }
+                ]}
+              />
             </div>
 
-            {/* Sidebar */}
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-6 rounded-full bg-red-100 p-3">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <h1 className="mb-2 text-2xl font-bold text-gray-900">
+                Máquina não encontrada
+              </h1>
+              <p className="mb-6 text-gray-600">
+                A máquina que você está procurando não está disponível ou foi removida.
+              </p>
+              <Button onClick={() => navigate('/categories')}>
+                Voltar para Categorias
+              </Button>
+            </div>
+          </div>
+        </main>
+      </ProductLayout>
+    );
+  }
+
+  return (
+    <ProductLayout>
+      <main className="flex-1">
+        <div className="container mx-auto px-4 py-8">
+          {/* Breadcrumbs */}
+          <div className="mb-6">
+            <Breadcrumb
+              items={[
+                {
+                  label: 'Categorias',
+                  href: '/categories'
+                },
+                {
+                  label: MACHINE_CATEGORIES.find(cat => machine.categorias?.includes(cat.id))?.nome || 'Categoria',
+                  href: `/categories/${machine.categorias?.[0]}`
+                },
+                {
+                  label: machine.nome
+                }
+              ]}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Galeria de imagens */}
+            <ProductGallery
+              images={[machine.imagemProduto, ...(machine.imagensAdicionais || [])]}
+              title={machine.nome}
+            />
+
+            {/* Informações do produto */}
             <div>
-              <div className="sticky top-4 rounded-lg bg-white p-6 shadow-sm">
-                <div className="mb-6">
-                  <h2 className="text-3xl font-bold">{machine.nome}</h2>
-                  <p className="mt-2 text-gray-600">{machine.descricaoBreve}</p>
-                  
-                  {machine.precoPromocional && (
-                    <p className="mt-4 text-2xl font-bold text-green-600">
-                      R$ {machine.precoPromocional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      <span className="text-sm text-gray-500">/dia</span>
-                    </p>
-                  )}
-                </div>
-                
-                <h3 className="mb-4 text-lg font-semibold">Faça sua Reserva</h3>
-                
-                <div className="grid gap-4">
+              <h1 className="text-3xl font-bold mb-4">{machine.nome}</h1>
+              <p className="text-gray-600 mb-6">{machine.descricaoBreve}</p>
+
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <Button
-                    onClick={handleRequestQuote}
-                    className="flex items-center justify-center gap-2"
+                    onClick={() => setShowInitialQuoteModal(true)}
+                    size="lg"
+                    className="flex-1"
                   >
                     Solicitar Orçamento
                   </Button>
-
                   <Button
-                    onClick={handleShare}
                     variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      // Implementar compartilhamento
+                    }}
                     className="flex items-center justify-center gap-2"
                   >
                     <Share2 className="h-5 w-5" />
@@ -196,7 +187,6 @@ export default function MachineDetailsPage() {
           </div>
         </div>
       </main>
-      <Footer />
 
       {showInitialQuoteModal && (
         <InitialQuoteModal
@@ -225,6 +215,6 @@ export default function MachineDetailsPage() {
           onViewQuotes={() => navigate('/dashboard')}
         />
       )}
-    </>
+    </ProductLayout>
   );
 }

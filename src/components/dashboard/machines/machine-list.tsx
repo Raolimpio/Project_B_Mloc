@@ -21,18 +21,24 @@ export function MachineList({
 }: MachineListProps) {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [showFilters, setShowFilters] = useState(window.innerWidth >= 1024);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const mainCategories = [
+    { id: 'aplicacao', name: 'Aplicações' },
+    { id: 'faseDaObra', name: 'Fases da Obra' },
+    { id: 'tipoTrabalho', name: 'Tipos de Trabalho' }
+  ];
 
   const filteredMachines = machines.filter(machine => {
-    const searchTerms = searchTerm.toLowerCase().split(' ');
-    const searchableText = `${machine.name} ${machine.category} ${machine.subcategory} ${machine.shortDescription}`.toLowerCase();
-    
-    const matchesSearch = searchTerms.every(term => searchableText.includes(term));
-    const matchesCategory = !selectedCategory || machine.category === selectedCategory;
+    const matchesCategory = !selectedCategory || 
+      machine.categoriasDetalhadas?.[selectedCategory as keyof typeof machine.categoriasDetalhadas]?.length > 0;
 
-    return matchesSearch && matchesCategory;
+    const searchTerms = searchTerm.toLowerCase().split(' ');
+    const searchableText = `${machine.nome || ''} ${machine.descricaoBreve || ''}`.toLowerCase();
+    const matchesSearch = searchTerms.every(term => searchableText.includes(term));
+
+    return matchesCategory && matchesSearch;
   });
 
   if (loading) {
@@ -57,51 +63,39 @@ export function MachineList({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Buscar por nome, categoria ou descrição..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 lg:hidden"
-          >
-            <Filter className="h-4 w-4" />
-            Filtros
-          </Button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            placeholder="Buscar por nome ou descrição..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
+          />
         </div>
 
-        {showFilters && (
-          <div className="rounded-lg border bg-white p-4">
-            <h3 className="mb-3 font-medium">Filtrar por Categoria</h3>
-            <div className="flex flex-wrap gap-2">
+        <div className="rounded-lg border bg-white p-4">
+          <h3 className="mb-3 font-medium">Filtrar por Categoria</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={selectedCategory === '' ? 'primary' : 'outline'}
+              onClick={() => setSelectedCategory('')}
+            >
+              Todas
+            </Button>
+            {mainCategories.map((category) => (
               <Button
+                key={category.id}
                 size="sm"
-                variant={selectedCategory === '' ? 'primary' : 'outline'}
-                onClick={() => setSelectedCategory('')}
+                variant={selectedCategory === category.id ? 'primary' : 'outline'}
+                onClick={() => setSelectedCategory(category.id)}
               >
-                Todas
+                {category.name}
               </Button>
-              {MACHINE_CATEGORIES.map((category) => (
-                <Button
-                  key={category.id}
-                  size="sm"
-                  variant={selectedCategory === category.id ? 'primary' : 'outline'}
-                  onClick={() => setSelectedCategory(category.id)}
-                >
-                  {category.name}
-                </Button>
-              ))}
-            </div>
+            ))}
           </div>
-        )}
+        </div>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -112,8 +106,8 @@ export function MachineList({
           >
             <div className="relative aspect-video">
               <img
-                src={machine.imageUrl || machine.photoUrl || DEFAULT_CATEGORY_IMAGE}
-                alt={machine.name}
+                src={machine.imagemProduto || DEFAULT_CATEGORY_IMAGE}
+                alt={machine.nome}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -126,20 +120,21 @@ export function MachineList({
             
             <div className="p-4">
               <div className="mb-2">
-                <h3 className="font-medium">{machine.name}</h3>
-                <p className="text-sm text-gray-500">{machine.shortDescription}</p>
+                <h3 className="font-medium">{machine.nome}</h3>
+                <p className="text-sm text-gray-500">{machine.descricaoBreve}</p>
               </div>
 
-              <div className="mb-4 flex flex-wrap gap-2">
-                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  {MACHINE_CATEGORIES.find(cat => cat.id === machine.category)?.name}
-                </span>
-                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  {machine.subcategory}
-                </span>
+              <div className="mb-4">
+                {machine.categorias?.length > 0 && (
+                  <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                    {machine.categorias.map(catId => 
+                      MACHINE_CATEGORIES.find(cat => cat.id === catId)?.name
+                    ).filter(Boolean).join(', ')}
+                  </span>
+                )}
               </div>
 
-              {userProfile?.uid === machine.ownerId ? (
+              {userProfile?.uid === machine.proprietarioId ? (
                 <Button
                   variant="outline"
                   className="w-full"

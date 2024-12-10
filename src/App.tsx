@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './contexts/auth-context';
 import { HomePage } from './pages/home';
 import { ProtectedRoute } from './components/auth/protected-route';
@@ -11,55 +12,67 @@ import MachineDetailsPage from './pages/machines/details';
 import CategoryPage from './pages/categories/[id]';
 import CategoriesPage from './pages/categories';
 import ProfilePage from './pages/profile';
+import { PageTransition } from './components/layout/page-transition';
+import { MainLayout } from './components/layout/main-layout';
+
+function AppRoutes() {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Rotas Públicas */}
+        <Route path="/" element={<MainLayout><PageTransition><HomePage /></PageTransition></MainLayout>} />
+        <Route path="/register" element={<MainLayout><PageTransition><RegisterPage /></PageTransition></MainLayout>} />
+        <Route path="/login" element={<MainLayout><PageTransition><LoginPage /></PageTransition></MainLayout>} />
+        <Route path="/categories" element={<MainLayout><PageTransition><CategoriesPage /></PageTransition></MainLayout>} />
+        <Route path="/categories/:id" element={<MainLayout><PageTransition><CategoryPage /></PageTransition></MainLayout>} />
+        <Route path="/machines/:id" element={<MainLayout><PageTransition><MachineDetailsPage /></PageTransition></MainLayout>} />
+        
+        {/* Rotas Protegidas */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <MainLayout><PageTransition><ProfilePage /></PageTransition></MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <MainLayout><PageTransition><DashboardPage /></PageTransition></MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/machines/new"
+          element={
+            <ProtectedRoute>
+              <MainLayout><PageTransition><NewMachinePage /></PageTransition></MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/machines/edit/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout><PageTransition><EditMachinePage /></PageTransition></MainLayout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </AnimatePresence>
+  );
+}
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <div className="min-h-screen bg-gray-50">
-          <Routes>
-            {/* Rotas Públicas */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/categories/:id" element={<CategoryPage />} />
-            <Route path="/machines/:id" element={<MachineDetailsPage />} />
-            
-            {/* Rotas Protegidas */}
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/machines/new"
-              element={
-                <ProtectedRoute>
-                  <NewMachinePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/machines/edit/:id"
-              element={
-                <ProtectedRoute>
-                  <EditMachinePage />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+          <AppRoutes />
         </div>
       </AuthProvider>
     </Router>

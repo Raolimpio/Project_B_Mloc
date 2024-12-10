@@ -6,7 +6,7 @@ import { MachineList } from './machines/machine-list';
 import { MyQuotes } from './quotes/my-quotes';
 import { MyRentals } from './rentals/my-rentals';
 import { getQuotesByRequester } from '@/lib/quotes';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/types/auth';
 import type { Machine } from '@/types';
@@ -28,7 +28,7 @@ export function RenterDashboard({ user }: RenterDashboardProps) {
   useEffect(() => {
     async function loadData() {
       try {
-        // Load available machines
+        // Load all machines without any filter
         const machinesRef = collection(db, 'machines');
         const machinesSnapshot = await getDocs(machinesRef);
         const machinesData = machinesSnapshot.docs.map(doc => ({

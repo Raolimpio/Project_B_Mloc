@@ -33,7 +33,8 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
         tipoTrabalho: [],
         faseDaObra: [],
         aplicacao: []
-      }
+      },
+      disponivel: true
     }
   });
 
