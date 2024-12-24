@@ -8,10 +8,24 @@ import {
   doc,
   serverTimestamp,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  getDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Quote } from '@/types/quote';
+import { 
+  notifyNewQuoteRequest,
+  notifyQuoteResponse,
+  notifyQuoteApproved,
+  notifyQuoteRejected,
+  notifyDeliveryScheduled,
+  notifyDeliveryCompleted,
+  notifyReturnRequested,
+  notifyReturnScheduled,
+  notifyReturnCompleted,
+  notifyPaymentReceived
+} from './notification-manager';
 
 async function checkMachineAvailability(machineId: string, startDate: string, endDate: string) {
   // Sempre retorna disponível
@@ -48,30 +62,23 @@ export async function createQuoteRequest(data: {
     console.log('Creating quote request:', data);
     const quotesRef = collection(db, 'quotes');
     
-    // Garantir que machinePhotos seja um array e machineMainPhoto não seja undefined
-    const { machineMainPhoto, machinePhotos, ...restData } = data;
     const quote = {
-      ...restData,
-      machinePhotos: machinePhotos || [], // Garantir que seja um array
-      ...(machineMainPhoto ? { machineMainPhoto } : {}), // Só inclui se tiver valor
+      ...data,
+      machinePhotos: data.machinePhotos || [],
+      ...(data.machineMainPhoto ? { machineMainPhoto: data.machineMainPhoto } : {}),
       status: 'pending',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
 
     const docRef = await addDoc(quotesRef, quote);
-    
-    // Enviar notificação ao proprietário
-    await sendNotification({
-      userId: data.ownerId,
-      title: 'Novo Pedido de Orçamento',
-      message: `Você recebeu um novo pedido de orçamento para ${data.machineName}`,
-      type: 'quote_request',
-      email: data.requesterEmail
-    });
+    const quoteId = docRef.id;
 
-    console.log('Quote created with ID:', docRef.id);
-    return docRef.id;
+    // Enviar notificação
+    await notifyNewQuoteRequest({ id: quoteId, ...quote });
+
+    console.log('Quote created with ID:', quoteId);
+    return quoteId;
   } catch (error) {
     console.error('Error creating quote request:', error);
     throw error;
@@ -105,6 +112,7 @@ export async function getQuotesByRequester(requesterId: string) {
 
 export async function getQuotesByOwner(ownerId: string) {
   try {
+    console.log('Buscando orçamentos para o proprietário:', ownerId);
     const quotesRef = collection(db, 'quotes');
     const q = query(
       quotesRef,
@@ -112,13 +120,22 @@ export async function getQuotesByOwner(ownerId: string) {
       orderBy('createdAt', 'desc')
     );
 
+    console.log('Executando query...');
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate()
-    })) as Quote[];
+    console.log('Total de orçamentos encontrados:', querySnapshot.size);
+
+    const quotes = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
+      };
+    }) as Quote[];
+
+    console.log('Orçamentos processados:', quotes);
+    return quotes;
   } catch (error) {
     console.error('Error fetching quotes:', error);
     throw new Error('Não foi possível carregar os orçamentos');
@@ -131,22 +148,143 @@ export async function updateQuoteStatus(
   data?: {
     value?: number;
     message?: string;
+    returnType?: 'store' | 'pickup';
+    returnNotes?: string;
   }
 ) {
   try {
     const quoteRef = doc(db, 'quotes', quoteId);
+    const quoteDoc = await getDoc(quoteRef);
+    
+    if (!quoteDoc.exists()) {
+      throw new Error('Orçamento não encontrado');
+    }
+
+    const quote = { id: quoteId, ...quoteDoc.data() } as Quote;
     const updateData = {
       status,
       ...data,
       updatedAt: serverTimestamp()
     };
     
-    console.log('Updating quote:', quoteId, updateData);
     await updateDoc(quoteRef, updateData);
+
+    // Enviar notificações apropriadas baseadas no novo status
+    try {
+      switch (status) {
+        case 'quoted':
+          await notifyQuoteResponse(quote);
+          break;
+        case 'accepted':
+          await notifyQuoteApproved(quote);
+          break;
+        case 'rejected':
+          await notifyQuoteRejected(quote);
+          break;
+        case 'in_preparation':
+          await notifyDeliveryScheduled(quote);
+          break;
+        case 'delivered':
+          await notifyDeliveryCompleted(quote);
+          break;
+        case 'return_requested':
+          await notifyReturnRequested(quote);
+          break;
+        case 'pickup_scheduled':
+          await notifyReturnScheduled(quote);
+          break;
+        case 'completed':
+          await notifyReturnCompleted(quote);
+          // Também notificar sobre pagamento se houver valor
+          if (quote.value) {
+            await notifyPaymentReceived(quote);
+          }
+          break;
+      }
+    } catch (notificationError) {
+      // Log do erro mas não falha a atualização do status
+      console.error('Erro ao enviar notificação:', notificationError);
+      
+      // Salvar notificação com retry
+      const retriesRef = collection(db, 'notification_retries');
+      await addDoc(retriesRef, {
+        quoteId,
+        status,
+        createdAt: serverTimestamp(),
+        error: notificationError.message,
+        retryCount: 0
+      });
+    }
+
     console.log('Quote updated successfully');
   } catch (error) {
     console.error('Error updating quote:', error);
     throw new Error('Não foi possível atualizar o orçamento');
+  }
+}
+
+// Função para processar notificações que falharam
+export async function processFailedNotifications() {
+  const MAX_RETRIES = 3;
+  
+  try {
+    const retriesRef = collection(db, 'notification_retries');
+    const q = query(retriesRef, where('retryCount', '<', MAX_RETRIES));
+    const snapshot = await getDocs(q);
+    
+    for (const doc of snapshot.docs) {
+      const retry = doc.data();
+      try {
+        const quoteRef = await getDoc(doc(db, 'quotes', retry.quoteId));
+        if (!quoteRef.exists()) continue;
+        
+        const quote = { id: retry.quoteId, ...quoteRef.data() } as Quote;
+        
+        // Tenta enviar a notificação novamente
+        switch (retry.status) {
+          case 'quoted':
+            await notifyQuoteResponse(quote);
+            break;
+          case 'accepted':
+            await notifyQuoteApproved(quote);
+            break;
+          case 'rejected':
+            await notifyQuoteRejected(quote);
+            break;
+          case 'in_preparation':
+            await notifyDeliveryScheduled(quote);
+            break;
+          case 'delivered':
+            await notifyDeliveryCompleted(quote);
+            break;
+          case 'return_requested':
+            await notifyReturnRequested(quote);
+            break;
+          case 'pickup_scheduled':
+            await notifyReturnScheduled(quote);
+            break;
+          case 'completed':
+            await notifyReturnCompleted(quote);
+            if (quote.value) {
+              await notifyPaymentReceived(quote);
+            }
+            break;
+        }
+        
+        // Se chegou aqui, a notificação foi enviada com sucesso
+        await deleteDoc(doc.ref);
+        
+      } catch (error) {
+        // Incrementa o contador de tentativas
+        await updateDoc(doc.ref, {
+          retryCount: retry.retryCount + 1,
+          lastError: error.message,
+          lastRetry: serverTimestamp()
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao processar notificações falhas:', error);
   }
 }
 

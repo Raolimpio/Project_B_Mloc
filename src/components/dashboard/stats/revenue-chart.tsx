@@ -18,6 +18,8 @@ interface RevenueChartProps {
 
 export function RevenueChart({ quotes }: RevenueChartProps) {
   const monthlyData = useMemo(() => {
+    console.log('Processando dados do gráfico:', quotes);
+
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const date = subMonths(new Date(), i);
       return {
@@ -25,32 +27,44 @@ export function RevenueChart({ quotes }: RevenueChartProps) {
         timestamp: date.getTime(),
         year: date.getFullYear(),
         monthNumber: date.getMonth(),
+        startDate: startOfMonth(date),
+        endDate: endOfMonth(date)
       };
     }).reverse();
 
-    return last6Months.map(({ month, year, monthNumber }) => {
+    const data = last6Months.map(({ month, year, startDate, endDate }) => {
       const monthQuotes = quotes.filter(quote => {
-        const quoteDate = quote.createdAt;
-        if (!(quoteDate instanceof Date)) return false;
+        if (!quote.createdAt) return false;
+        
+        const quoteDate = quote.createdAt instanceof Date 
+          ? quote.createdAt 
+          : new Date(quote.createdAt);
+        
+        if (isNaN(quoteDate.getTime())) return false;
         
         return (
-          ['accepted', 'in_preparation', 'in_transit', 'delivered', 'return_requested', 'pickup_scheduled', 'returned']
-          .includes(quote.status) &&
-          quoteDate.getMonth() === monthNumber &&
-          quoteDate.getFullYear() === year
+          ['delivered', 'completed', 'returned'].includes(quote.status) &&
+          quoteDate >= startDate &&
+          quoteDate <= endDate
         );
       });
 
-      const revenue = monthQuotes.reduce((sum, quote) => sum + (quote.value || 0), 0);
+      const revenue = monthQuotes.reduce((sum, quote) => {
+        const value = typeof quote.value === 'number' ? quote.value : 0;
+        return sum + value;
+      }, 0);
 
       return {
         name: `${month}/${year}`,
         revenue,
       };
     });
+
+    console.log('Dados do gráfico processados:', data);
+    return data;
   }, [quotes]);
 
-  if (monthlyData.length === 0) {
+  if (!quotes.length) {
     return (
       <div className="flex h-72 items-center justify-center">
         <p className="text-gray-500">Nenhum dado disponível</p>

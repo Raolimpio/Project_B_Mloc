@@ -11,7 +11,7 @@ import { RevenueChart } from './stats/revenue-chart';
 import { TopMachines } from './stats/top-machines';
 import { RecentActivity } from './stats/recent-activity';
 import { FinancialPanel } from './stats/financial-panel';
-import { ReportsPanel } from './reports/reports-panel';
+import { Reports } from './reports/reports'; // Alterado de ReportsPanel para Reports
 import { CategoryManager } from './categories/category-manager';
 import { SiteSettingsManager } from './site-settings/site-settings-manager';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -51,7 +51,9 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
         const machinesSnapshot = await getDocs(machinesQuery);
         const machinesData = machinesSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate()
         })) as IMaquina[];
         setMachines(machinesData);
 
@@ -59,18 +61,25 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
         const quotesRef = collection(db, 'quotes');
         const quotesQuery = query(quotesRef, where('ownerId', '==', user.uid));
         const quotesSnapshot = await getDocs(quotesQuery);
-        const quotesData = quotesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Quote[];
+        const quotesData = quotesSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate()
+          };
+        }) as Quote[];
+
+        console.log('Orçamentos carregados:', quotesData);
         setQuotes(quotesData);
 
         // Atualizar estatísticas
         setStats({
           totalMachines: machinesData.length,
-          activeQuotes: quotesData.filter(q => q.status === 'pending').length,
-          approvedQuotes: quotesData.filter(q => q.status === 'accepted').length,
-          pickupRequests: quotesData.filter(q => q.status === 'pickup_requested').length
+          activeQuotes: quotesData.filter(q => ['pending', 'quoted'].includes(q.status)).length,
+          approvedQuotes: quotesData.filter(q => ['accepted', 'in_preparation', 'in_transit'].includes(q.status)).length,
+          pickupRequests: quotesData.filter(q => ['pickup_requested', 'return_requested'].includes(q.status)).length
         });
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -276,7 +285,7 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
 
       {activeView === 'reports' && (
         <div className="rounded-lg bg-white p-4 sm:p-6 shadow-md">
-          <ReportsPanel quotes={quotes} />
+          <Reports userId={user.uid} />
         </div>
       )}
 

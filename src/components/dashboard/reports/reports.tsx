@@ -34,7 +34,10 @@ export function Reports({ userId }: ReportsProps) {
 
   async function loadQuotes() {
     try {
+      console.log('Carregando orçamentos para:', userId);
+      setLoading(true);
       const quotesData = await getQuotesByOwner(userId);
+      console.log('Orçamentos carregados:', quotesData);
       
       // Carregar dados da máquina para cada orçamento
       const quotesWithMachines = await Promise.all(
@@ -61,6 +64,7 @@ export function Reports({ userId }: ReportsProps) {
         })
       );
 
+      console.log('Orçamentos com máquinas:', quotesWithMachines);
       setQuotes(quotesWithMachines);
     } catch (error) {
       console.error('Error loading quotes:', error);
@@ -71,7 +75,14 @@ export function Reports({ userId }: ReportsProps) {
   }
 
   const filteredQuotes = quotes.filter(quote => {
-    const quoteDate = new Date(quote.createdAt);
+    if (!quote.createdAt) return false;
+    
+    const quoteDate = quote.createdAt instanceof Date 
+      ? quote.createdAt 
+      : new Date(quote.createdAt);
+      
+    if (isNaN(quoteDate.getTime())) return false;
+    
     const now = new Date();
     const daysDiff = Math.floor((now.getTime() - quoteDate.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -87,10 +98,67 @@ export function Reports({ userId }: ReportsProps) {
     }
   });
 
-  const totalValue = filteredQuotes.reduce((sum, quote) => sum + (quote.value || 0), 0);
-  const totalQuotes = filteredQuotes.length;
-  const approvedQuotes = filteredQuotes.filter(q => q.status === 'approved').length;
-  const pendingQuotes = filteredQuotes.filter(q => q.status === 'pending').length;
+  // Apenas orçamentos finalizados (aceitos e entregues)
+  const completedQuotes = filteredQuotes.filter(q => 
+    ['delivered', 'return_requested', 'pickup_scheduled', 'return_in_transit', 'completed'].includes(q.status)
+  );
+
+  const totalValue = completedQuotes.reduce((sum, quote) => {
+    const value = typeof quote.value === 'number' ? quote.value : 0;
+    return sum + value;
+  }, 0);
+  
+  const totalQuotes = completedQuotes.length;
+  const activeQuotes = filteredQuotes.filter(q => 
+    ['accepted', 'in_preparation', 'in_transit'].includes(q.status)
+  ).length;
+  const pendingQuotes = filteredQuotes.filter(q => 
+    ['pending', 'quoted'].includes(q.status)
+  ).length;
+
+  // Agrupar por máquina
+  const machineStats = filteredQuotes.reduce((acc, quote) => {
+    if (!quote.machineId) return acc;
+    
+    if (!acc[quote.machineId]) {
+      acc[quote.machineId] = {
+        id: quote.machineId,
+        name: quote.machineName,
+        photo: quote.machine?.fotoPrincipal,
+        totalRentals: 0,
+        totalValue: 0,
+        lastRental: null as Date | null
+      };
+    }
+
+    const stats = acc[quote.machineId];
+    
+    if (['delivered', 'completed'].includes(quote.status)) {
+      stats.totalRentals++;
+      stats.totalValue += quote.value || 0;
+    }
+
+    const quoteDate = quote.createdAt instanceof Date 
+      ? quote.createdAt 
+      : new Date(quote.createdAt);
+
+    if (!stats.lastRental || quoteDate > stats.lastRental) {
+      stats.lastRental = quoteDate;
+    }
+
+    return acc;
+  }, {} as Record<string, {
+    id: string;
+    name: string;
+    photo?: string;
+    totalRentals: number;
+    totalValue: number;
+    lastRental: Date | null;
+  }>);
+
+  const topMachines = Object.values(machineStats)
+    .sort((a, b) => b.totalValue - a.totalValue)
+    .slice(0, 5);
 
   if (loading) {
     return (
@@ -104,138 +172,136 @@ export function Reports({ userId }: ReportsProps) {
   }
 
   if (error) {
-    return <Feedback type="error" message={error} className="my-4" />;
-  }
-
-  if (quotes.length === 0) {
     return (
-      <div className="text-center">
-        <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-medium">Nenhum orçamento encontrado</h3>
-        <p className="mt-1 text-gray-500">
-          Os orçamentos aparecerão aqui quando você começar a criar.
-        </p>
-      </div>
+      <Feedback
+        type="error"
+        title="Erro ao carregar relatórios"
+        message={error}
+        className="mx-auto max-w-2xl"
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Relatório de Orçamentos</h2>
-        <Button size="sm" variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Exportar
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-2xl font-semibold">Relatórios e Análises</h2>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant={dateFilter === 'all' ? 'default' : 'outline'} 
+            size="sm" 
+            onClick={() => setDateFilter('all')}
+          >
+            Todos
+          </Button>
+          <Button 
+            variant={dateFilter === 'last7days' ? 'default' : 'outline'} 
+            size="sm" 
+            onClick={() => setDateFilter('last7days')}
+          >
+            7 dias
+          </Button>
+          <Button 
+            variant={dateFilter === 'last30days' ? 'default' : 'outline'} 
+            size="sm" 
+            onClick={() => setDateFilter('last30days')}
+          >
+            30 dias
+          </Button>
+          <Button 
+            variant={dateFilter === 'last90days' ? 'default' : 'outline'} 
+            size="sm" 
+            onClick={() => setDateFilter('last90days')}
+          >
+            90 dias
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
-          <p className="text-sm text-gray-600">Total de Orçamentos</p>
-          <p className="mt-1 text-2xl font-semibold">{totalQuotes}</p>
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="p-6">
+          <h3 className="mb-4 text-lg font-semibold">Visão Geral</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total de Aluguéis</span>
+              <span className="font-medium">{totalQuotes}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Aluguéis Ativos</span>
+              <span className="font-medium">{activeQuotes}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Orçamentos Pendentes</span>
+              <span className="font-medium">{pendingQuotes}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Receita Total</span>
+              <span className="font-medium">
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(totalValue)}
+              </span>
+            </div>
+          </div>
         </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600">Orçamentos Aprovados</p>
-          <p className="mt-1 text-2xl font-semibold">{approvedQuotes}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600">Orçamentos Pendentes</p>
-          <p className="mt-1 text-2xl font-semibold">{pendingQuotes}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600">Valor Total</p>
-          <p className="mt-1 text-2xl font-semibold">
-            R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-        </Card>
-      </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant={dateFilter === 'all' ? 'primary' : 'outline'}
-          onClick={() => setDateFilter('all')}
-        >
-          Todos os períodos
-        </Button>
-        <Button
-          size="sm"
-          variant={dateFilter === 'last7days' ? 'primary' : 'outline'}
-          onClick={() => setDateFilter('last7days')}
-        >
-          Últimos 7 dias
-        </Button>
-        <Button
-          size="sm"
-          variant={dateFilter === 'last30days' ? 'primary' : 'outline'}
-          onClick={() => setDateFilter('last30days')}
-        >
-          Últimos 30 dias
-        </Button>
-        <Button
-          size="sm"
-          variant={dateFilter === 'last90days' ? 'primary' : 'outline'}
-          onClick={() => setDateFilter('last90days')}
-        >
-          Últimos 90 dias
-        </Button>
-      </div>
-
-      <div className="grid gap-4">
-        {filteredQuotes.map((quote) => (
-          <Card key={quote.id} className="overflow-hidden">
-            <div className="flex flex-col sm:flex-row">
-              <div className="relative h-48 w-full sm:h-auto sm:w-48">
-                {quote.machine?.fotoPrincipal || quote.machine?.fotos?.[0] ? (
-                  <img
-                    src={quote.machine.fotoPrincipal || quote.machine.fotos[0]}
-                    alt={quote.machineName}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-image.jpg';
-                    }}
-                  />
-                ) : (
-                  <MachineImageFallback />
-                )}
-              </div>
-
-              <div className="flex flex-1 flex-col p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">{quote.requesterName}</h3>
-                    <p className="text-sm text-gray-500">{quote.machineName}</p>
+        <Card className="col-span-2 p-6">
+          <h3 className="mb-4 text-lg font-semibold">Máquinas Mais Alugadas</h3>
+          {topMachines.length === 0 ? (
+            <p className="text-center text-gray-500">
+              Nenhum aluguel registrado neste período
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {topMachines.map(machine => (
+                <div key={machine.id} className="flex items-center gap-4 border-b pb-4 last:border-0">
+                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg">
+                    {machine.photo ? (
+                      <img
+                        src={machine.photo}
+                        alt={machine.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <MachineImageFallback className="h-full w-full" />
+                    )}
                   </div>
-                  <span className="text-lg font-semibold">
-                    R$ {quote.value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Data do Orçamento</p>
-                    <p className="mt-1 text-sm">
-                      {format(new Date(quote.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  <div className="flex-1">
+                    <p className="font-medium">{machine.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {machine.totalRentals} {machine.totalRentals === 1 ? 'aluguel' : 'aluguéis'}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Status</p>
-                    <p className="mt-1 text-sm capitalize">{quote.status}</p>
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(machine.totalValue)}
+                    </p>
+                    {machine.lastRental && (
+                      <p className="text-sm text-gray-500">
+                        Último: {format(machine.lastRental, "dd/MM/yyyy")}
+                      </p>
+                    )}
                   </div>
                 </div>
-
-                {quote.notes && (
-                  <div className="mt-4 rounded-lg bg-gray-50 p-3">
-                    <p className="text-sm font-medium text-gray-600">Observações</p>
-                    <p className="mt-1 text-sm text-gray-600">{quote.notes}</p>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
-          </Card>
-        ))}
+          )}
+        </Card>
       </div>
+
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Exportar Relatório</h3>
+          <Button variant="outline" size="sm">
+            <Download className="mr-2 h-4 w-4" />
+            Baixar PDF
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

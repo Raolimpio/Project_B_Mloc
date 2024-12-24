@@ -19,34 +19,44 @@ interface HeroBanner {
 export function HomePage() {
   const [heroBanner, setHeroBanner] = useState<HeroBanner | null>(null);
   const [categories, setCategories] = useState<ICategoria[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchHomeData = async () => {
-      // Buscar configurações da home
-      const homeDoc = await getDoc(doc(db, 'site-settings', 'home'));
-      if (homeDoc.exists()) {
-        const data = homeDoc.data();
-        if (data.heroBanner?.imageUrl) {
-          // Só carregar campos que existem, não auto-preencher
-          const banner: HeroBanner = {
-            imageUrl: data.heroBanner.imageUrl,
-            ...(data.heroBanner.title?.trim() ? { title: data.heroBanner.title } : {}),
-            ...(data.heroBanner.subtitle?.trim() ? { subtitle: data.heroBanner.subtitle } : {}),
-            ...(data.heroBanner.buttonText?.trim() ? { buttonText: data.heroBanner.buttonText } : {}),
-            ...(data.heroBanner.buttonLink?.trim() ? { buttonLink: data.heroBanner.buttonLink } : {})
-          };
-          setHeroBanner(banner);
-        }
-      }
+      try {
+        // Carregar dados em paralelo
+        const [homeDocPromise, categoriesPromise] = await Promise.all([
+          getDoc(doc(db, 'site-settings', 'home')),
+          getDocs(collection(db, 'categorias'))
+        ]);
 
-      // Buscar categorias
-      const categoriesRef = collection(db, 'categorias');
-      const categoriesSnapshot = await getDocs(categoriesRef);
-      const categoriesData = categoriesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ICategoria[];
-      setCategories(categoriesData);
+        // Processar dados do banner
+        if (homeDocPromise.exists()) {
+          const data = homeDocPromise.data();
+          if (data.heroBanner?.imageUrl) {
+            const banner: HeroBanner = {
+              imageUrl: data.heroBanner.imageUrl,
+              ...(data.heroBanner.title?.trim() ? { title: data.heroBanner.title } : {}),
+              ...(data.heroBanner.subtitle?.trim() ? { subtitle: data.heroBanner.subtitle } : {}),
+              ...(data.heroBanner.buttonText?.trim() ? { buttonText: data.heroBanner.buttonText } : {}),
+              ...(data.heroBanner.buttonLink?.trim() ? { buttonLink: data.heroBanner.buttonLink } : {})
+            };
+            setHeroBanner(banner);
+          }
+        }
+
+        // Processar categorias
+        const categoriesData = categoriesPromise.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as ICategoria[];
+        
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Erro ao carregar dados da home:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchHomeData();
@@ -69,84 +79,83 @@ export function HomePage() {
       <Header />
       <main className="flex-1">
         {/* Banner Hero */}
-        <div className="container mx-auto px-4 py-12">
+        <section className="container mx-auto px-4 py-6">
           {heroBanner && (
-            <div 
-              className="relative h-[400px] rounded-2xl overflow-hidden w-full"
-            >
+            <div className="relative h-[400px] rounded-lg overflow-hidden w-full shadow-md">
               <img 
                 src={heroBanner.imageUrl}
                 alt="Banner"
                 className="w-full h-full object-cover"
               />
               {(heroBanner.title || heroBanner.subtitle) && (
-                <div className="absolute inset-0 flex flex-col justify-center text-white px-8">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-center text-white px-6">
                   {heroBanner.title && (
-                    <h1 className="text-4xl md:text-5xl font-bold mb-4">{heroBanner.title}</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold mb-3">{heroBanner.title}</h1>
                   )}
                   {heroBanner.subtitle && (
-                    <p className="text-xl mb-8">{heroBanner.subtitle}</p>
+                    <p className="text-lg mb-4">{heroBanner.subtitle}</p>
                   )}
                   {heroBanner.buttonText && (
                     <Button 
-                      size="lg" 
-                      asChild
+                      size="lg"
                       className="w-fit"
                     >
-                      <a href={heroBanner.buttonLink}>{heroBanner.buttonText}</a>
+                      {heroBanner.buttonText}
                     </Button>
                   )}
                 </div>
               )}
             </div>
           )}
-        </div>
+        </section>
 
         {/* Banners de Categorias */}
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+        <section className="container mx-auto px-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {mainCategories.map((category) => (
               <a 
                 key={category.id}
                 href={`/categories/${category.id}`}
-                className="relative h-48 rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                className="group relative h-56 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <img 
                   src={category.bannerUrl || '/placeholder.jpg'} 
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </a>
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Subcategorias */}
-        <div className="bg-gray-100 py-8">
+        <section className="bg-gray-50 py-6">
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {topSubcategories.map((subcat) => (
                 <a 
                   key={subcat.id}
                   href={`/categories/${subcat.id}`}
-                  className="flex flex-col items-center p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
+                  className="flex flex-col items-center p-3 bg-white rounded-lg hover:shadow-sm transition-all duration-300"
                 >
                   <img 
                     src={subcat.iconeUrl} 
                     alt={subcat.nome}
-                    className="w-12 h-12 mb-2"
+                    className="w-10 h-10 mb-2"
                   />
                   <span className="text-sm text-center">{subcat.nome}</span>
                 </a>
               ))}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Featured Products */}
-        <div className="container mx-auto px-4 py-8">
-          <FeaturedMachines />
-        </div>
+        {/* Máquinas em Destaque */}
+        <section className="py-6">
+          <div className="container mx-auto px-4">
+            <FeaturedMachines />
+          </div>
+        </section>
       </main>
       <HomeFooter />
     </div>

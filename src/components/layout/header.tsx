@@ -48,54 +48,65 @@ export function Header() {
             <SearchBox />
           </div>
 
-          <div className="hidden items-center gap-3 lg:flex">
+          <div className="hidden items-center gap-6 lg:flex">
             {userProfile ? (
               <>
                 {userProfile.type === 'company' && (
-                  <Button size="sm" onClick={() => navigate('/machines/new')}>
+                  <Button 
+                    size="sm" 
+                    onClick={() => navigate('/machines/new')}
+                    className="px-6"
+                  >
                     Anunciar Máquina
                   </Button>
                 )}
-                <NotificationBell />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="rounded-full ring-2 ring-white ring-offset-2 ring-offset-primary-600 transition-shadow hover:shadow-md">
-                      <Avatar src={userProfile.photoURL} size="sm" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{userProfile.displayName}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{userProfile.email}</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                      {userProfile.type === 'individual' ? 'Painel do Cliente' : 'Painel do Anunciante'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
-                      <User className="mr-2 h-4 w-4" />
-                      Perfil
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sair
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-4">
+                  <NotificationBell />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="rounded-full ring-2 ring-white ring-offset-2 ring-offset-primary-600 transition-shadow hover:shadow-md">
+                        <Avatar src={userProfile.photoURL} size="sm" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">{userProfile.displayName}</p>
+                          <p className="text-xs leading-none text-muted-foreground">{userProfile.email}</p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                        {userProfile.type === 'individual' ? 'Painel do Cliente' : 'Painel do Anunciante'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/profile')}>
+                        <User className="mr-2 h-4 w-4" />
+                        Perfil
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleSignOut}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sair
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </>
             ) : (
               <>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="px-6"
                   onClick={() => navigate('/login')}
                 >
                   Entrar
                 </Button>
-                <Button size="sm" onClick={() => navigate('/register')}>
+                <Button 
+                  size="sm" 
+                  className="px-6"
+                  onClick={() => navigate('/register')}
+                >
                   Cadastrar
                 </Button>
               </>

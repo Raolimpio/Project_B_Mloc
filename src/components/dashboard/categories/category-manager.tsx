@@ -194,13 +194,29 @@ export function CategoryManager() {
 
   const loadCategorias = async () => {
     try {
+      console.log('Carregando categorias...');
+      setLoading(true);
+      
       const categoriasRef = collection(db, 'categorias');
       const snapshot = await getDocs(categoriasRef);
-      const categoriasData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        ordem: doc.data().ordem || 0 // Garantir que ordem sempre tenha um valor
-      } as ICategoria));
+      
+      console.log('Total de categorias encontradas:', snapshot.size);
+      
+      const categoriasData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Dados da categoria:', doc.id, data);
+        return {
+          id: doc.id,
+          nome: data.nome || '',
+          descricao: data.descricao || '',
+          tipo: data.tipo || 'tipoTrabalho',
+          bannerUrl: data.bannerUrl || '',
+          iconeUrl: data.iconeUrl || '',
+          ordem: data.ordem || 0
+        } as ICategoria;
+      });
+
+      console.log('Categorias processadas:', categoriasData);
       setCategorias(categoriasData);
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);

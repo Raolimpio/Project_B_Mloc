@@ -1,40 +1,51 @@
-interface Category {
-  title: string;
-  description: string;
-  imageUrl: string;
-}
+import { Link } from 'react-router-dom';
 
-const categories: Category[] = [
+const mainCategories = [
   {
-    title: 'Equipamentos de Construção',
-    description: 'Encontre escavadeiras, bulldozers, guindastes e muito mais.',
-    imageUrl: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=800&q=80',
+    id: 'cat-tipos-trabalho',
+    nome: 'Tipos de Trabalho',
+    descricao: 'Encontre máquinas por tipo de serviço',
+    iconeUrl: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122',
+    tipo: 'tipoTrabalho'
   },
   {
-    title: 'Máquinas Agrícolas',
-    description: 'Explore tratores, colheitadeiras e equipamentos agrícolas.',
-    imageUrl: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=800&q=80',
+    id: 'cat-fases-obra',
+    nome: 'Fases da Obra',
+    descricao: 'Equipamentos para cada etapa da sua obra',
+    iconeUrl: 'https://images.unsplash.com/photo-1597844808175-66f8f064ba37',
+    tipo: 'faseObra'
   },
   {
-    title: 'Ferramentas Industriais',
-    description: 'Descubra ferramentas elétricas, geradores e máquinas industriais.',
-    imageUrl: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
-  },
+    id: 'cat-aplicacao',
+    nome: 'Aplicação',
+    descricao: 'Soluções específicas para cada segmento',
+    iconeUrl: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407',
+    tipo: 'aplicacao'
+  }
 ];
 
 export function FeaturedCategories() {
   return (
     <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {categories.map((category) => (
-        <div key={category.title} className="rounded-lg bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold">{category.title}</h3>
-          <img
-            src={category.imageUrl}
-            alt={category.title}
-            className="mb-4 h-48 w-full rounded-md object-cover"
-          />
-          <p className="text-gray-600">{category.description}</p>
-        </div>
+      {mainCategories.map((category) => (
+        <Link
+          key={category.id}
+          to={`/categories/${category.tipo}`}
+          className="group relative block overflow-hidden rounded-lg bg-white shadow-sm transition-all hover:shadow-md"
+        >
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <img
+              src={category.iconeUrl}
+              alt={category.nome}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+          </div>
+          <div className="p-6">
+            <h3 className="mb-2 text-xl font-bold text-gray-900">{category.nome}</h3>
+            <p className="text-sm text-gray-600">{category.descricao}</p>
+          </div>
+        </Link>
       ))}
     </section>
   );

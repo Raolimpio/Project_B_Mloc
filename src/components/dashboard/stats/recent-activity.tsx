@@ -10,10 +10,25 @@ interface RecentActivityProps {
 
 export function RecentActivity({ quotes }: RecentActivityProps) {
   const recentActivity = useMemo(() => {
-    return quotes
-      .filter(quote => quote.updatedAt instanceof Date)
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    console.log('Processando atividades recentes:', quotes);
+    const validQuotes = quotes
+      .filter(quote => {
+        const updateDate = quote.updatedAt instanceof Date 
+          ? quote.updatedAt 
+          : new Date(quote.updatedAt || quote.createdAt);
+        return !isNaN(updateDate.getTime());
+      })
+      .map(quote => ({
+        ...quote,
+        sortDate: quote.updatedAt instanceof Date 
+          ? quote.updatedAt 
+          : new Date(quote.updatedAt || quote.createdAt)
+      }))
+      .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
       .slice(0, 5);
+
+    console.log('Atividades filtradas:', validQuotes);
+    return validQuotes;
   }, [quotes]);
 
   const getStatusIcon = (status: Quote['status']) => {
@@ -32,6 +47,12 @@ export function RecentActivity({ quotes }: RecentActivityProps) {
         return <Truck className="h-5 w-5 text-orange-600" />;
       case 'delivered':
         return <MapPin className="h-5 w-5 text-teal-600" />;
+      case 'completed':
+        return <CheckCircle className="h-5 w-5 text-emerald-600" />;
+      case 'return_requested':
+        return <Truck className="h-5 w-5 text-indigo-600" />;
+      case 'returned':
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
       default:
         return <Clock className="h-5 w-5 text-gray-600" />;
     }
@@ -53,6 +74,12 @@ export function RecentActivity({ quotes }: RecentActivityProps) {
         return 'Em rota de entrega';
       case 'delivered':
         return 'Entregue';
+      case 'completed':
+        return 'Aluguel finalizado';
+      case 'return_requested':
+        return 'Solicitação de devolução';
+      case 'returned':
+        return 'Máquina devolvida';
       default:
         return 'Status desconhecido';
     }
@@ -74,6 +101,12 @@ export function RecentActivity({ quotes }: RecentActivityProps) {
         return 'bg-orange-100';
       case 'delivered':
         return 'bg-teal-100';
+      case 'completed':
+        return 'bg-emerald-100';
+      case 'return_requested':
+        return 'bg-indigo-100';
+      case 'returned':
+        return 'bg-green-100';
       default:
         return 'bg-gray-100';
     }
@@ -89,25 +122,28 @@ export function RecentActivity({ quotes }: RecentActivityProps) {
 
   return (
     <div className="space-y-4">
-      {recentActivity.map((quote) => (
-        <div key={quote.id} className="flex items-center gap-4">
-          <div className={`rounded-full p-2 ${getStatusColor(quote.status)}`}>
-            {getStatusIcon(quote.status)}
+      {recentActivity.map((quote) => {
+        const date = quote.updatedAt instanceof Date 
+          ? quote.updatedAt 
+          : new Date(quote.updatedAt || quote.createdAt);
+
+        return (
+          <div key={quote.id} className="flex items-center gap-4">
+            <div className={`rounded-full p-2 ${getStatusColor(quote.status)}`}>
+              {getStatusIcon(quote.status)}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium">{quote.machineName}</h3>
+              <p className="text-sm text-gray-500">
+                {getStatusText(quote.status)}
+              </p>
+            </div>
+            <div className="text-sm text-gray-500">
+              {formatDistanceToNow(date, { addSuffix: true, locale: ptBR })}
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="font-medium">{quote.machineName}</h3>
-            <p className="text-sm text-gray-500">
-              {getStatusText(quote.status)}
-            </p>
-          </div>
-          <p className="text-sm text-gray-500">
-            {formatDistanceToNow(quote.updatedAt, {
-              addSuffix: true,
-              locale: ptBR,
-            })}
-          </p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

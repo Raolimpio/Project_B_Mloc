@@ -90,34 +90,16 @@ export function OwnerQuotes({ userId }: OwnerQuotesProps) {
     return () => unsubscribe();
   }, [userId]);
 
-  async function loadQuotes() {
-    try {
-      const quotesData = await getQuotesByOwner(userId);
-      setQuotes(quotesData);
-    } catch (error) {
-      console.error('Error loading quotes:', error);
-      setError('Não foi possível carregar os orçamentos');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const handleQuoteResponse = async (quoteId: string, status: 'quoted' | 'rejected') => {
-    try {
-      await updateQuoteStatus(quoteId, status);
-      await loadQuotes();
-      setSelectedQuote(null);
-    } catch (error) {
-      console.error('Error updating quote:', error);
-      setError('Não foi possível atualizar o orçamento');
-    }
+  const handleQuoteResponse = async (quote: QuoteWithMachine) => {
+    setSelectedQuote(quote);
   };
 
-  const handleQuoteSuccess = () => {
-    if (selectedQuote) {
-      loadQuotes();
-      setSelectedQuote(null);
-    }
+  const handleModalClose = () => {
+    setSelectedQuote(null);
+  };
+
+  const handleModalSuccess = () => {
+    setSelectedQuote(null);
   };
 
   const statusCounts = {
@@ -130,15 +112,9 @@ export function OwnerQuotes({ userId }: OwnerQuotesProps) {
     delivered: quotes.filter(q => q.status === 'delivered').length,
   };
 
-  const filteredQuotes = quotes.filter(quote => {
-    if (statusFilter !== 'all' && quote.status !== statusFilter) {
-      return false;
-    }
-    
-    if (activeTab === 'pending') {
-      return quote.status === 'pending';
-    }
-    return quote.status === 'quoted';
+  const filteredQuotes = quotes.filter((quote) => {
+    if (statusFilter === 'all') return true;
+    return quote.status === statusFilter;
   });
 
   const getStatusIcon = (status: Quote['status']) => {
@@ -283,7 +259,7 @@ export function OwnerQuotes({ userId }: OwnerQuotesProps) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleQuoteResponse(quote.id, 'rejected')}
+                onClick={() => updateQuoteStatus(quote.id, 'rejected')}
                 className="flex items-center gap-1"
               >
                 <XCircle className="h-4 w-4" />
@@ -298,19 +274,24 @@ export function OwnerQuotes({ userId }: OwnerQuotesProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent"></div>
-          <p className="mt-2 text-gray-600">Carregando orçamentos...</p>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Feedback 
+        type="error" 
+        message={error}
+        className="mx-auto mt-8"
+      />
     );
   }
 
   return (
     <div className="space-y-4">
-      {error && <Feedback type="error" message={error} />}
-
       <Card className="p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
@@ -383,8 +364,8 @@ export function OwnerQuotes({ userId }: OwnerQuotesProps) {
       {selectedQuote && (
         <QuoteResponseModal
           quote={selectedQuote}
-          onClose={() => setSelectedQuote(null)}
-          onSuccess={handleQuoteSuccess}
+          onClose={handleModalClose}
+          onSuccess={handleModalSuccess}
         />
       )}
     </div>

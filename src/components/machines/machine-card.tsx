@@ -2,6 +2,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardFooter } from '../ui/card';
 import { IMaquina } from '@/types/machine.types';
 import { Link } from 'react-router-dom';
+import { OptimizedImage } from '../ui/optimized-image';
 
 interface MachineCardProps {
   machine: IMaquina;
@@ -9,37 +10,23 @@ interface MachineCardProps {
 }
 
 export function MachineCard({ machine, onRentClick }: MachineCardProps) {
-  // Tentar todas as possíveis fontes de imagem
   const imageUrl = machine.fotos?.[0] || 
                   machine.fotoPrincipal || 
                   (machine as any).imagemProduto || 
                   '/placeholder-image.jpg';
-
-  console.log('Dados da máquina no card:', {
-    id: machine.id,
-    nome: machine.nome,
-    fotos: machine.fotos,
-    fotoPrincipal: machine.fotoPrincipal,
-    imagemProduto: (machine as any).imagemProduto,
-    imagemFinal: imageUrl
-  });
 
   return (
     <Link to={`/machines/${machine.id}`}>
       <Card className="h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
         <div className="group relative w-full overflow-hidden rounded-t-lg">
           <div className="aspect-[4/3] sm:aspect-video">
-            <img
+            <OptimizedImage
               src={imageUrl}
               alt={machine.nome}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={(e) => {
-                e.currentTarget.src = '/placeholder-image.jpg';
-                console.error('Erro ao carregar imagem:', {
-                  url: imageUrl,
-                  machine: machine.id
-                });
-              }}
+              aspectRatio="4:3"
+              className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+              fallbackSrc="/placeholder-image.jpg"
+              quality={80}
             />
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

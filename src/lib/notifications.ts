@@ -51,11 +51,17 @@ export function setupMessageListener(callback: (payload: any) => void) {
 export async function sendNotification(data: CreateNotificationData & { email?: string }) {
   try {
     // Criar notificação no banco
-    await createNotification(data);
+    await createNotification({
+      ...data,
+      body: data.body || data.message // Compatibilidade com código antigo
+    });
 
     // Se tiver email, enviar notificação por email também
     if (data.email) {
-      await sendEmailNotification(data);
+      await sendEmailNotification({
+        ...data,
+        message: data.body || data.message // Compatibilidade com código antigo
+      });
     }
 
     // Enviar notificação push se o usuário tiver token
@@ -66,7 +72,7 @@ export async function sendNotification(data: CreateNotificationData & { email?: 
       await sendPushNotification({
         token: fcmToken,
         title: data.title,
-        body: data.message
+        body: data.body || data.message // Compatibilidade com código antigo
       });
     }
   } catch (error) {

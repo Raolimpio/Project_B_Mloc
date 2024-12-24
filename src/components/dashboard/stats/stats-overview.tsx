@@ -24,30 +24,31 @@ export function StatsOverview() {
         const machinesSnapshot = await getDocs(machinesQuery);
         const totalMachines = machinesSnapshot.docs.length;
 
-        // Buscar orçamentos ativos (pendentes)
+        // Buscar todos os orçamentos do proprietário
         const quotesRef = collection(db, 'quotes');
-        const activeQuotesQuery = query(
-          quotesRef,
-          where('ownerId', '==', user.uid),
-          where('status', '==', 'pending')
-        );
-        const activeQuotesSnapshot = await getDocs(activeQuotesQuery);
-        const activeQuotes = activeQuotesSnapshot.docs.length;
+        const allQuotesQuery = query(quotesRef, where('ownerId', '==', user.uid));
+        const allQuotesSnapshot = await getDocs(allQuotesQuery);
+        
+        // Filtrar por status
+        const quotes = allQuotesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
 
-        // Buscar orçamentos aprovados
-        const approvedQuotesQuery = query(
-          quotesRef,
-          where('ownerId', '==', user.uid),
-          where('status', '==', 'accepted')
-        );
-        const approvedQuotesSnapshot = await getDocs(approvedQuotesQuery);
-        const approvedQuotes = approvedQuotesSnapshot.docs.length;
+        // Orçamentos ativos (pendentes + em andamento)
+        const activeQuotes = quotes.filter(quote => 
+          ['pending', 'quoted', 'accepted', 'in_preparation', 'in_transit'].includes(quote.status)
+        ).length;
 
-        // Buscar solicitações de coleta
-        const pickupsRef = collection(db, 'pickups');
-        const pickupsQuery = query(pickupsRef, where('ownerId', '==', user.uid));
-        const pickupsSnapshot = await getDocs(pickupsQuery);
-        const pickupRequests = pickupsSnapshot.docs.length;
+        // Orçamentos aprovados (aceitos + em andamento)
+        const approvedQuotes = quotes.filter(quote => 
+          ['accepted', 'in_preparation', 'in_transit', 'delivered'].includes(quote.status)
+        ).length;
+
+        // Solicitações de coleta (retorno + coleta inicial)
+        const pickupRequests = quotes.filter(quote =>
+          ['pickup_requested', 'return_requested'].includes(quote.status)
+        ).length;
 
         setStats({
           totalMachines,

@@ -34,9 +34,11 @@ export function QuoteResponseModal({ quote, onClose, onSuccess }: QuoteResponseM
         message: formData.message,
       });
 
+      // Não precisa recarregar manualmente pois o subscribeToQuotes já atualiza automaticamente
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Erro ao enviar resposta');
+      console.error('Error updating quote:', err);
+      setError(err.message || 'Ocorreu um erro ao responder o orçamento');
     } finally {
       setLoading(false);
     }
@@ -87,8 +89,7 @@ export function QuoteResponseModal({ quote, onClose, onSuccess }: QuoteResponseM
               type="number"
               required
               value={formData.value}
-              onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-              className="w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
+              onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}              className="w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
               placeholder="0,00"
               step="0.01"
               min="0"
@@ -100,8 +101,7 @@ export function QuoteResponseModal({ quote, onClose, onSuccess }: QuoteResponseM
             <textarea
               required
               value={formData.message}
-              onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-              className="h-32 w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
+              onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}              className="h-32 w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
               placeholder="Detalhes do orçamento, condições, prazo de validade, etc."
             />
           </div>

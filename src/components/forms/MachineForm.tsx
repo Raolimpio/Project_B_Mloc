@@ -52,12 +52,12 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const carregarCategorias = async () => {
+    const loadCategorias = async () => {
       try {
         const categoriasRef = collection(db, 'categorias');
         const snapshot = await getDocs(categoriasRef);
         
-        const novasCategorias: CategoriasPorTipo = {
+        const categoriasAgrupadas: CategoriasPorTipo = {
           tipoTrabalho: [],
           faseObra: [],
           aplicacao: []
@@ -65,20 +65,24 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
 
         snapshot.docs.forEach(doc => {
           const categoria = { id: doc.id, ...doc.data() } as ICategoria;
-          switch (categoria.tipo) {
+          switch(categoria.tipo) {
             case 'tipoTrabalho':
-              novasCategorias.tipoTrabalho.push(categoria);
+              categoriasAgrupadas.tipoTrabalho.push(categoria);
               break;
             case 'faseObra':
-              novasCategorias.faseObra.push(categoria);
+              categoriasAgrupadas.faseObra.push(categoria);
               break;
             case 'aplicacao':
-              novasCategorias.aplicacao.push(categoria);
+              categoriasAgrupadas.aplicacao.push(categoria);
               break;
           }
         });
 
-        setCategorias(novasCategorias);
+        ['tipoTrabalho', 'faseObra', 'aplicacao'].forEach(tipo => {
+          categoriasAgrupadas[tipo].sort((a, b) => a.nome.localeCompare(b.nome));
+        });
+
+        setCategorias(categoriasAgrupadas);
       } catch (error) {
         console.error('Erro ao carregar categorias:', error);
       } finally {
@@ -86,31 +90,26 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
       }
     };
 
-    carregarCategorias();
+    loadCategorias();
   }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setUploadingImage(true);
     try {
-      setUploadingImage(true);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const imageRef = ref(storage, `machines/${userProfile?.uid}/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(imageRef, file);
+        return getDownloadURL(snapshot.ref);
+      });
+
+      const urls = await Promise.all(uploadPromises);
       
-      // Gerar um ID único para a máquina se não existir
-      const machineId = initialData?.id || `machine-${Date.now()}`;
-      
-      // Usar o caminho correto do storage
-      const timestamp = Date.now();
-      const sanitizedFilename = file.name.replace(/[^a-z0-9.-]/gi, '_');
-      const filePath = `machines/${machineId}/${timestamp}-${sanitizedFilename}`;
-      const storageRef = ref(storage, filePath);
-      
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      setValue('imagemProduto', url);
-      setValue('id', machineId);
+      setValue('imagemProduto', urls[0]);
     } catch (error) {
-      console.error('Erro ao fazer upload da imagem:', error);
+      console.error('Erro ao fazer upload:', error);
     } finally {
       setUploadingImage(false);
     }

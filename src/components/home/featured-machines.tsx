@@ -11,60 +11,21 @@ export function FeaturedMachines() {
   useEffect(() => {
     async function loadMachines() {
       try {
-        console.log('Carregando máquinas em destaque...');
         const machinesRef = collection(db, 'machines');
-        
-        // Primeiro vamos ver todas as máquinas
-        const allMachinesSnapshot = await getDocs(machinesRef);
-        console.log('Total de máquinas:', allMachinesSnapshot.size);
-        
-        // Vamos ver os dados completos das 3 primeiras máquinas
-        console.log('Dados das primeiras máquinas:');
-        allMachinesSnapshot.docs.slice(0, 3).forEach(doc => {
-          const data = doc.data();
-          console.log('Máquina:', {
-            id: doc.id,
-            nome: data.nome,
-            destaque: data.destaque,
-            fotos: data.fotos, // Ver o array completo de fotos
-            fotoPrincipal: data.fotoPrincipal,
-            imagemProduto: data.imagemProduto // Verificar se existe este campo
-          });
-        });
-        
-        // Agora vamos ver as máquinas em destaque
         const q = query(
           machinesRef,
           where('destaque', '==', true),
           limit(6)
         );
         const snapshot = await getDocs(q);
-        console.log('Total de máquinas em destaque:', snapshot.size);
-        
-        if (snapshot.empty) {
-          console.log('Nenhuma máquina encontrada com destaque = true');
-          // Vamos ver os dados de algumas máquinas para debug
-          allMachinesSnapshot.docs.slice(0, 3).forEach(doc => {
-            console.log('Exemplo de máquina:', {
-              id: doc.id,
-              destaque: doc.data().destaque,
-              nome: doc.data().nome
-            });
-          });
-        }
-        
-        const machinesData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('Dados completos da máquina em destaque:', data);
-          return {
-            id: doc.id,
-            ...data
-          } as IMaquina;
-        });
+        const machinesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as IMaquina[];
         
         setMachines(machinesData);
       } catch (error) {
-        console.error('Erro ao carregar máquinas em destaque:', error);
+        console.error('Erro ao carregar máquinas:', error);
       } finally {
         setLoading(false);
       }

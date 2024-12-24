@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { OptimizedImage } from '../ui/optimized-image';
 
@@ -15,33 +15,26 @@ interface Categoria {
 }
 
 export function CategoryShowcase() {
-  const [gruposCategoria, setGruposCategoria] = useState<{[key: string]: Categoria}>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarCategorias = async () => {
       try {
+        // Buscar apenas as categorias principais (grupo)
         const categoriasRef = collection(db, 'categorias');
-        const snapshot = await getDocs(categoriasRef);
+        const q = query(
+          categoriasRef,
+          where('grupo', '==', true)
+        );
+        const snapshot = await getDocs(q);
         
-        const grupos: {[key: string]: Categoria} = {};
-        
-        snapshot.docs.forEach(doc => {
-          const data = doc.data() as Categoria;
-          if (data.tipo === 'grupo') {
-            grupos[doc.id] = {
-              id: doc.id,
-              nome: data.nome,
-              descricao: data.descricao,
-              tipo: data.tipo,
-              bannerUrl: data.bannerUrl,
-              iconeUrl: data.iconeUrl,
-              ordem: data.ordem || 0
-            };
-          }
-        });
+        const categoriasData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Categoria));
 
-        setGruposCategoria(grupos);
+        setCategorias(categoriasData);
       } catch (error) {
         console.error('Erro ao carregar categorias:', error);
       } finally {
@@ -54,21 +47,12 @@ export function CategoryShowcase() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((index) => (
-          <div key={index} className="relative overflow-hidden rounded-2xl shadow-md">
-            <div className="animate-pulse">
-              <div className="h-64 bg-gray-200" />
-              <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-300" />
-                  <div className="space-y-2">
-                    <div className="h-4 w-24 bg-gray-300 rounded" />
-                    <div className="h-3 w-32 bg-gray-300 rounded" />
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div key={index} className="animate-pulse rounded-lg bg-white p-6 shadow-sm">
+            <div className="mb-4 h-6 w-3/4 rounded bg-gray-200"></div>
+            <div className="mb-4 h-48 w-full rounded-md bg-gray-200"></div>
+            <div className="h-4 w-full rounded bg-gray-200"></div>
           </div>
         ))}
       </div>
@@ -77,24 +61,31 @@ export function CategoryShowcase() {
 
   return (
     <div className="container mx-auto px-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {Object.values(gruposCategoria)
-          .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-          .map((grupo) => (
-            <Link
-              key={grupo.id}
-              to={`/categories/${grupo.id}`}
-              className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-all duration-300"
-            >
-              <div className="relative h-64">
-                <OptimizedImage
-                  src={grupo.bannerUrl}
-                  alt={grupo.nome}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            </Link>
-          ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {categorias.map((categoria) => (
+          <Link
+            key={categoria.id}
+            to={`/categories/${categoria.id}`}
+            className="group relative overflow-hidden rounded-lg"
+          >
+            <div className="aspect-[16/9]">
+              <OptimizedImage
+                src={categoria.bannerUrl}
+                alt={categoria.nome}
+                aspectRatio="16:9"
+                className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+                fallbackSrc="/placeholder-category.jpg"
+                quality={85}
+                priority={true}
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/0"></div>
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+              <h3 className="text-xl font-bold mb-2">{categoria.nome}</h3>
+              <p className="text-sm text-white/90">{categoria.descricao}</p>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );

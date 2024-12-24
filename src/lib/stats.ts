@@ -11,11 +11,11 @@ export interface MachineStats {
 
 export function calculateMachineStats(machines: Machine[], quotes: Quote[]): MachineStats[] {
   const machineStats = machines.map(machine => {
+    // Filtrar orçamentos finalizados desta máquina
     const machineQuotes = quotes.filter(
       quote => 
         quote.machineId === machine.id && 
-        ['accepted', 'in_preparation', 'in_transit', 'delivered', 'return_requested', 'pickup_scheduled', 'returned']
-        .includes(quote.status)
+        ['delivered', 'completed', 'returned'].includes(quote.status)
     );
 
     return {
@@ -23,24 +23,23 @@ export function calculateMachineStats(machines: Machine[], quotes: Quote[]): Mac
       name: machine.name,
       totalRentals: machineQuotes.length,
       revenue: machineQuotes.reduce((sum, quote) => sum + (quote.value || 0), 0),
-      imageUrl: machine.imageUrl || machine.photoUrl,
+      imageUrl: machine.fotoPrincipal || machine.imagemProduto || machine.imageUrl,
     };
   });
 
-  // Ordenar primeiro por número de aluguéis e depois por receita em caso de empate
+  // Ordenar primeiro por receita e depois por número de aluguéis em caso de empate
   return machineStats.sort((a, b) => {
-    if (b.totalRentals !== a.totalRentals) {
-      return b.totalRentals - a.totalRentals;
+    if (b.revenue !== a.revenue) {
+      return b.revenue - a.revenue;
     }
-    return b.revenue - a.revenue;
+    return b.totalRentals - a.totalRentals;
   });
 }
 
 export function calculateTotalRevenue(quotes: Quote[]): number {
   return quotes
     .filter(quote => 
-      ['accepted', 'in_preparation', 'in_transit', 'delivered', 'return_requested', 'pickup_scheduled', 'returned']
-      .includes(quote.status)
+      ['delivered', 'completed', 'returned'].includes(quote.status)
     )
     .reduce((sum, quote) => sum + (quote.value || 0), 0);
 }

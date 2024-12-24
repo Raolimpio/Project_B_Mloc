@@ -1,13 +1,22 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 
-export type NotificationType = 'orçamento' | 'entrega' | 'aprovação' | 'info';
+export type NotificationType = 
+  | 'quote'      // Relacionado a orçamentos
+  | 'delivery'   // Relacionado a entregas
+  | 'return'     // Relacionado a devoluções
+  | 'payment'    // Relacionado a pagamentos
+  | 'maintenance'// Relacionado a manutenção
+  | 'message'    // Mensagens gerais
+  | 'info';      // Informações do sistema
 
 export interface Notification {
   id: string;
+  userId: string;
   type: NotificationType;
   title: string;
-  message: string;
+  body: string;
   read: boolean;
+  data?: Record<string, any>;
   createdAt: Date;
 }
 

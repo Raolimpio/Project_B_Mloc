@@ -14,12 +14,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const getNotificationIcon = (type: NotificationType) => {
   switch (type) {
-    case 'orçamento':
+    case 'quote':
       return '💰';
-    case 'entrega':
+    case 'delivery':
       return '🚚';
-    case 'aprovação':
-      return '✅';
+    case 'payment':
+      return '💳';
+    case 'message':
+      return '💬';
+    case 'maintenance':
+      return '🔧';
     default:
       return 'ℹ️';
   }
@@ -87,7 +91,7 @@ const NotificationPanel = () => {
                       <div>
                         <h4 className="font-medium">{notification.title}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {notification.message}
+                          {notification.body}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {formatDate(notification.createdAt)}
