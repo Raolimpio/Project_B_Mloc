@@ -20,6 +20,12 @@ service cloud.firestore {
       allow write: if isAuthenticated() && isCompanyUser();
     }
 
+    // Regras para configurações do site
+    match /siteSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isCompanyUser();
+    }
+
     // Regras para máquinas
     match /machines/{machineId} {
       allow read: if true;

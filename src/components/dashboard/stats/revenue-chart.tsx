@@ -31,6 +31,8 @@ export function RevenueChart({ quotes }: RevenueChartProps) {
     return last6Months.map(({ month, year, monthNumber }) => {
       const monthQuotes = quotes.filter(quote => {
         const quoteDate = quote.createdAt;
+        if (!(quoteDate instanceof Date)) return false;
+        
         return (
           ['accepted', 'in_preparation', 'in_transit', 'delivered', 'return_requested', 'pickup_scheduled', 'returned']
           .includes(quote.status) &&

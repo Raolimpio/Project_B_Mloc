@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Feedback } from '@/components/ui/feedback';
 import { createQuoteRequest } from '@/lib/quotes';
 import type { Machine } from '@/types';
+import { QuoteSuccessModal } from './QuoteSuccessModal';
 
 interface QuoteModalProps {
   machine: Machine;
@@ -21,6 +22,7 @@ export function QuoteModal({ machine, onClose, onSuccess }: QuoteModalProps) {
     description: '',
     additionalInfo: ''
   });
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,13 +36,24 @@ export function QuoteModal({ machine, onClose, onSuccess }: QuoteModalProps) {
         ...formData
       });
       
-      onSuccess();
+      setShowSuccess(true);
     } catch (err) {
       setError('Erro ao enviar solicitação. Por favor, tente novamente.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (showSuccess) {
+    return (
+      <QuoteSuccessModal
+        onClose={onClose}
+        onViewQuotes={onSuccess}
+        machine={machine}
+        quoteData={formData}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

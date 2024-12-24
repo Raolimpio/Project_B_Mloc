@@ -40,22 +40,25 @@ export interface IMaquina {
   descricaoBreve: string;
   categorias: string[]; // Array de IDs de categorias para compatibilidade
   categoriasDetalhadas?: ICategoriasDetalhadas;
-  imagemProduto: string;
+  fotos: string[]; // Array de URLs das fotos, pelo menos uma é obrigatória
+  fotoPrincipal?: string; // URL da foto principal para display
   videoProduto?: string;
   precoPromocional?: number;
   disponivel?: boolean;
   proprietarioId: string;
   localizacao?: ILocalizacao;
+  destaque?: boolean; // Indica se a máquina deve ser mostrada em destaque
   // Campos adicionais do formato antigo
   marca?: string;
   modelo?: string;
   ano?: number;
-  especificacoes?: {
-    capacidadeCacamba?: string;
-    peso?: string;
-    potencia?: string;
-    [key: string]: string | undefined;
-  };
+  horasDeUso?: number;
+  potencia?: string;
+  peso?: string;
+  capacidade?: string;
+  alcance?: string;
+  consumo?: string;
+  status?: string;
 }
 
 // Lista de estados brasileiros

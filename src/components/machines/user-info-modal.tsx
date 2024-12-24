@@ -12,10 +12,10 @@ interface UserInfoModalProps {
   machine: Machine;
   quoteData: InitialQuoteData;
   onClose: () => void;
-  onSuccess: () => void;
+  onSubmit: () => void;
 }
 
-export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserInfoModalProps) {
+export function UserInfoModal({ machine, quoteData, onClose, onSubmit }: UserInfoModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -53,23 +53,19 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
       // Criar solicitação de orçamento
       await createQuoteRequest({
         machineId: machine.id,
-        machineName: machine.nome,
-        machinePhoto: machine.imagemProduto,
-        ownerId: machine.proprietarioId, // Mantido o ownerId usando o proprietarioId da máquina
-        requesterId: userProfile.uid,
+        ownerId: machine.proprietarioId,
+        renterId: userProfile.uid,
         startDate: quoteData.startDate,
         endDate: quoteData.endDate,
         purpose: quoteData.purpose,
         location: quoteData.location,
-        requesterName: formData.fullName,
-        requesterEmail: formData.email,
-        requesterPhone: formData.phone,
+        status: 'pending',
       });
 
-      onSuccess();
+      onSubmit();
     } catch (err: any) {
-      console.error('Erro ao criar solicitação:', err);
-      setError(err.message || 'Erro ao processar solicitação');
+      console.error('Erro ao criar usuário e orçamento:', err);
+      setError(err.message || 'Ocorreu um erro ao processar sua solicitação');
     } finally {
       setLoading(false);
     }
@@ -77,7 +73,7 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative w-full max-w-md rounded-lg bg-white p-6">
+      <div className="relative w-full max-w-lg rounded-lg bg-white p-6">
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
@@ -104,6 +100,7 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
               value={formData.fullName}
               onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
               className="w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
+              placeholder="Seu nome completo"
             />
           </div>
 
@@ -115,6 +112,7 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
               className="w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
+              placeholder="seu.email@exemplo.com"
             />
           </div>
 
@@ -126,6 +124,7 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
               value={formData.phone}
               onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
               className="w-full rounded-lg border p-2 focus:border-blue-500 focus:outline-none"
+              placeholder="(00) 00000-0000"
             />
           </div>
 
@@ -135,15 +134,16 @@ export function UserInfoModal({ machine, quoteData, onClose, onSuccess }: UserIn
               variant="outline"
               className="flex-1"
               onClick={onClose}
+              disabled={loading}
             >
               Voltar
             </Button>
             <Button
               type="submit"
               className="flex-1"
-              disabled={loading}
+              loading={loading}
             >
-              {loading ? 'Enviando...' : 'Enviar Solicitação'}
+              Enviar Solicitação
             </Button>
           </div>
         </form>

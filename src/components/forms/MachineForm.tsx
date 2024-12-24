@@ -28,13 +28,14 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
     defaultValues: {
       ...initialData,
       proprietarioId: userProfile?.uid,
-      categorias: [],
+      categorias: initialData?.categorias || [],
       categoriasDetalhadas: {
-        tipoTrabalho: [],
-        faseDaObra: [],
-        aplicacao: []
+        tipoTrabalho: initialData?.categoriasDetalhadas?.tipoTrabalho || [],
+        faseDaObra: initialData?.categoriasDetalhadas?.faseDaObra || [],
+        aplicacao: initialData?.categoriasDetalhadas?.aplicacao || []
       },
-      disponivel: true
+      disponivel: initialData?.disponivel ?? true,
+      destaque: initialData?.destaque ?? false
     }
   });
 
@@ -235,7 +236,7 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
             />
           </div>
 
-          <div>
+          <div className="flex space-x-4">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -243,6 +244,15 @@ export const MachineForm: React.FC<MachineFormProps> = ({ onSubmit, initialData 
                 className="rounded border-gray-300"
               />
               <span className="text-sm font-medium">Disponível para Locação</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                {...register('destaque')}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm font-medium">Produto em Destaque</span>
             </label>
           </div>
         </div>

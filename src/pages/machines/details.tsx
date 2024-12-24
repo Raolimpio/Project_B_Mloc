@@ -12,6 +12,7 @@ import { MACHINE_CATEGORIES } from '../../lib/constants';
 import { InitialQuoteModal } from '../../components/machines/initial-quote-modal';
 import { UserInfoModal } from '../../components/machines/user-info-modal';
 import { QuoteSuccessModal } from '../../components/machines/quote-success-modal';
+import { createQuoteRequest } from '../../lib/quotes';
 import type { IMaquina as Machine } from '../../types/machine.types';
 
 export default function MachineDetailsPage() {
@@ -54,10 +55,41 @@ export default function MachineDetailsPage() {
     loadMachine();
   }, [id, navigate]);
 
-  const handleQuoteNext = (data: any) => {
-    setQuoteData(data);
+  const handleInitialQuoteSubmit = async (initialQuoteData: any) => {
+    setQuoteData(initialQuoteData);
+    
+    if (userProfile && machine) {
+      try {
+        console.log('Machine data for quote:', machine);
+        await createQuoteRequest({
+          machineId: machine.id,
+          machineName: machine.nome,
+          machinePhotos: machine.fotos || [],
+          machineMainPhoto: machine.fotoPrincipal || (machine.fotos && machine.fotos.length > 0 ? machine.fotos[0] : null),
+          ownerId: machine.proprietarioId,
+          renterId: userProfile.uid,
+          requesterId: userProfile.uid,
+          requesterName: userProfile.displayName || 'Usuário',
+          requesterEmail: userProfile.email || '',
+          requesterPhone: userProfile.phoneNumber || '',
+          startDate: initialQuoteData.startDate,
+          endDate: initialQuoteData.endDate,
+          purpose: initialQuoteData.purpose,
+          location: initialQuoteData.location,
+        });
+        setShowSuccessModal(true);
+      } catch (error) {
+        console.error('Erro ao criar orçamento:', error);
+      }
+    } else {
+      setShowUserInfoModal(true);
+    }
     setShowInitialQuoteModal(false);
-    setShowUserInfoModal(true);
+  };
+
+  const handleUserInfoSubmit = () => {
+    setShowUserInfoModal(false);
+    setShowSuccessModal(true);
   };
 
   if (loading) {
@@ -193,7 +225,7 @@ export default function MachineDetailsPage() {
           machine={machine}
           userProfile={userProfile}
           onClose={() => setShowInitialQuoteModal(false)}
-          onNext={handleQuoteNext}
+          onSubmit={handleInitialQuoteSubmit}
         />
       )}
 
@@ -202,10 +234,7 @@ export default function MachineDetailsPage() {
           machine={machine}
           quoteData={quoteData}
           onClose={() => setShowUserInfoModal(false)}
-          onSuccess={() => {
-            setShowUserInfoModal(false);
-            setShowSuccessModal(true);
-          }}
+          onSubmit={handleUserInfoSubmit}
         />
       )}
 
@@ -213,6 +242,14 @@ export default function MachineDetailsPage() {
         <QuoteSuccessModal
           onClose={() => setShowSuccessModal(false)}
           onViewQuotes={() => navigate('/dashboard')}
+          machine={machine!}
+          quoteData={{
+            startDate: quoteData.startDate,
+            endDate: quoteData.endDate,
+            location: quoteData.location,
+            description: quoteData.purpose,
+            additionalInfo: '',
+          }}
         />
       )}
     </ProductLayout>

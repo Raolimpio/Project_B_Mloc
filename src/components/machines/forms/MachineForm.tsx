@@ -27,6 +27,7 @@ export function MachineForm({ machine }: MachineFormProps) {
     shortDescription: machine?.shortDescription || '',
     longDescription: machine?.longDescription || '',
     imageUrl: machine?.imageUrl || '',
+    featured: machine?.featured || false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,27 +52,34 @@ export function MachineForm({ machine }: MachineFormProps) {
       }
     }
 
+    setLoading(true);
     setError('');
     setSuccess('');
-    setLoading(true);
 
     try {
-      const machineData = {
-        ...formData,
-        ownerId: userProfile.uid,
-      };
-
       if (machine) {
-        await updateMachine(machine.id, machineData);
+        await updateMachine(machine.id, {
+          ...formData,
+          updatedAt: new Date().toISOString(),
+        });
         setSuccess('Máquina atualizada com sucesso!');
       } else {
-        await createMachine(machineData);
+        const newMachine = await createMachine({
+          ...formData,
+          userId: userProfile.uid,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
         setSuccess('Máquina criada com sucesso!');
-        setTimeout(() => navigate('/dashboard'), 1500);
+        
+        // Redirecionar para a página da máquina
+        setTimeout(() => {
+          navigate(`/machines/${newMachine.id}`);
+        }, 2000);
       }
     } catch (err) {
-      console.error('Error saving machine:', err);
-      setError('Falha ao salvar máquina');
+      console.error('Erro ao salvar máquina:', err);
+      setError('Erro ao salvar a máquina. Por favor, tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -92,7 +100,7 @@ export function MachineForm({ machine }: MachineFormProps) {
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} 
               className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               placeholder="Digite o nome da máquina"
             />
@@ -108,7 +116,7 @@ export function MachineForm({ machine }: MachineFormProps) {
                   ...prev, 
                   category: e.target.value,
                   subcategory: '' 
-                }))}
+                }))} 
                 className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               >
                 <option value="">Selecione uma categoria</option>
@@ -123,7 +131,7 @@ export function MachineForm({ machine }: MachineFormProps) {
               <select
                 required
                 value={formData.subcategory}
-                onChange={(e) => setFormData(prev => ({ ...prev, subcategory: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, subcategory: e.target.value }))} 
                 className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
                 disabled={!formData.category}
               >
@@ -157,7 +165,7 @@ export function MachineForm({ machine }: MachineFormProps) {
               <select
                 required
                 value={formData.workPhase}
-                onChange={(e) => setFormData(prev => ({ ...prev, workPhase: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, workPhase: e.target.value }))} 
                 className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               >
                 <option value="">Selecione a fase</option>
@@ -174,7 +182,7 @@ export function MachineForm({ machine }: MachineFormProps) {
               type="text"
               required
               value={formData.shortDescription}
-              onChange={(e) => setFormData(prev => ({ ...prev, shortDescription: e.target.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, shortDescription: e.target.value }))} 
               className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               placeholder="Breve descrição da máquina"
               maxLength={100}
@@ -186,7 +194,7 @@ export function MachineForm({ machine }: MachineFormProps) {
             <textarea
               required
               value={formData.longDescription}
-              onChange={(e) => setFormData(prev => ({ ...prev, longDescription: e.target.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, longDescription: e.target.value }))} 
               className="h-32 w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               placeholder="Descrição detalhada da máquina"
             />
@@ -199,7 +207,7 @@ export function MachineForm({ machine }: MachineFormProps) {
               <input
                 type="url"
                 value={formData.imageUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))} 
                 className="w-full rounded-lg border py-2 pl-10 pr-4 focus:border-primary-600 focus:outline-none"
                 placeholder="https://"
               />
@@ -217,6 +225,19 @@ export function MachineForm({ machine }: MachineFormProps) {
                 />
               </div>
             )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="featured"
+              checked={formData.featured}
+              onChange={(e) => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <label htmlFor="featured" className="text-sm font-medium text-gray-700">
+              Destacar na página inicial
+            </label>
           </div>
         </div>
       </Card>

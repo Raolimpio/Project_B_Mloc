@@ -6,15 +6,24 @@ import { getQuotesByOwner, updateQuoteStatus } from '@/lib/quotes';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Quote } from '@/types/quote';
+import { MachineImageFallback } from '@/components/ui/machine-image-fallback';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { IMaquina } from '@/types/machine.types';
+import { Card } from '@/components/ui/card';
 
 interface PickupRequestsProps {
   userId: string;
 }
 
+interface QuoteWithMachine extends Quote {
+  machine?: IMaquina;
+}
+
 type StatusFilter = 'all' | 'pending' | 'scheduled' | 'completed';
 
 export function PickupRequests({ userId }: PickupRequestsProps) {
-  const [requests, setRequests] = useState<Quote[]>([]);
+  const [requests, setRequests] = useState<QuoteWithMachine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
@@ -27,10 +36,37 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
   async function loadRequests() {
     try {
       const quotesData = await getQuotesByOwner(userId);
-      setRequests(quotesData.filter(quote => 
-        quote.returnType === 'pickup' && 
-        ['return_requested', 'pickup_scheduled', 'returned'].includes(quote.status)
-      ));
+      const filteredQuotes = quotesData.filter(quote => 
+        ['return_requested', 'pickup_scheduled', 'return_in_transit', 'completed'].includes(quote.status)
+      );
+
+      // Carregar dados da máquina para cada solicitação
+      const quotesWithMachines = await Promise.all(
+        filteredQuotes.map(async (quote) => {
+          try {
+            const machineDoc = await getDoc(doc(db, 'machines', quote.machineId));
+            if (machineDoc.exists()) {
+              const machineData = machineDoc.data();
+              return {
+                ...quote,
+                machine: { 
+                  id: machineDoc.id,
+                  ...machineData,
+                  // Map old image fields to new format
+                  fotos: machineData.fotos || [],
+                  fotoPrincipal: machineData.fotoPrincipal || machineData.imagemProduto || null
+                } as IMaquina
+              };
+            }
+            return quote;
+          } catch (error) {
+            console.error('Error loading machine:', error);
+            return quote;
+          }
+        })
+      );
+
+      setRequests(quotesWithMachines);
     } catch (error) {
       console.error('Error loading pickup requests:', error);
       setError('Não foi possível carregar as solicitações de coleta');
@@ -42,10 +78,7 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
   const handleSchedulePickup = async (requestId: string) => {
     try {
       setUpdatingRequest(requestId);
-      const request = requests.find(r => r.id === requestId);
-      await updateQuoteStatus(requestId, 'pickup_scheduled', {
-        value: request?.value,
-      });
+      await updateQuoteStatus(requestId, 'pickup_scheduled');
       await loadRequests();
     } catch (error) {
       console.error('Error scheduling pickup:', error);
@@ -58,10 +91,7 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
   const handleConfirmReturn = async (requestId: string) => {
     try {
       setUpdatingRequest(requestId);
-      const request = requests.find(r => r.id === requestId);
-      await updateQuoteStatus(requestId, 'returned', {
-        value: request?.value,
-      });
+      await updateQuoteStatus(requestId, 'completed');
       await loadRequests();
     } catch (error) {
       console.error('Error confirming return:', error);
@@ -77,7 +107,9 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
         return <Clock className="h-4 w-4" />;
       case 'pickup_scheduled':
         return <Truck className="h-4 w-4" />;
-      case 'returned':
+      case 'return_in_transit':
+        return <MapPin className="h-4 w-4" />;
+      case 'completed':
         return <CheckCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
@@ -90,7 +122,9 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
         return 'Coleta Solicitada';
       case 'pickup_scheduled':
         return 'Coleta Agendada';
-      case 'returned':
+      case 'return_in_transit':
+        return 'Em Trânsito';
+      case 'completed':
         return 'Devolvido';
       default:
         return 'Status Desconhecido';
@@ -103,7 +137,9 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
         return 'bg-yellow-100 text-yellow-800';
       case 'pickup_scheduled':
         return 'bg-blue-100 text-blue-800';
-      case 'returned':
+      case 'return_in_transit':
+        return 'bg-orange-100 text-orange-800';
+      case 'completed':
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -118,7 +154,7 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
       return request.status === 'pickup_scheduled';
     }
     if (statusFilter === 'completed') {
-      return request.status === 'returned';
+      return request.status === 'completed';
     }
     return true;
   });
@@ -152,7 +188,7 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
 
   const pendingCount = requests.filter(r => r.status === 'return_requested').length;
   const scheduledCount = requests.filter(r => r.status === 'pickup_scheduled').length;
-  const completedCount = requests.filter(r => r.status === 'returned').length;
+  const completedCount = requests.filter(r => r.status === 'completed').length;
 
   return (
     <div className="space-y-6">
@@ -199,87 +235,85 @@ export function PickupRequests({ userId }: PickupRequestsProps) {
         </Button>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid gap-4">
         {filteredRequests.map((request) => (
-          <div key={request.id} className="flex overflow-hidden rounded-lg border bg-white shadow-sm">
-            <div className="relative h-auto w-48">
-              <img
-                src={request.machinePhoto}
-                alt={request.machineName}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&q=80&w=800';
-                }}
-              />
-            </div>
-
-            <div className="flex flex-1 flex-col p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">{request.machineName}</h3>
-                  <p className="text-sm text-gray-500">
-                    Cliente: {request.requesterName}
-                  </p>
-                </div>
-                <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(request.status)}`}>
-                  {getStatusIcon(request.status)}
-                  {getStatusText(request.status)}
-                </span>
-              </div>
-
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Período do Aluguel</p>
-                  <p className="mt-1 text-sm">
-                    {format(new Date(request.startDate), "dd/MM/yyyy")} até{' '}
-                    {format(new Date(request.endDate), "dd/MM/yyyy")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Local</p>
-                  <p className="mt-1 text-sm">{request.location}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-lg bg-gray-50 p-3">
-                <p className="text-sm font-medium text-gray-600">Valor do Aluguel</p>
-                <p className="mt-1 text-lg font-semibold">
-                  R$ {request.value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-                {request.returnNotes && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-gray-600">Observações</p>
-                    <p className="text-sm text-gray-600">{request.returnNotes}</p>
-                  </div>
+          <Card key={request.id} className="overflow-hidden">
+            <div className="flex flex-col sm:flex-row">
+              <div className="relative h-48 w-full sm:h-auto sm:w-48">
+                {request.machine?.fotoPrincipal || request.machine?.fotos?.[0] ? (
+                  <img
+                    src={request.machine.fotoPrincipal || request.machine.fotos[0]}
+                    alt={request.machineName}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-image.jpg';
+                    }}
+                  />
+                ) : (
+                  <MachineImageFallback />
                 )}
               </div>
 
-              {request.status === 'return_requested' && (
-                <div className="mt-4">
-                  <Button
-                    onClick={() => handleSchedulePickup(request.id)}
-                    disabled={updatingRequest === request.id}
-                    className="w-full"
-                  >
-                    Agendar Coleta
-                  </Button>
+              <div className="flex flex-1 flex-col p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">{request.requesterName}</h3>
+                    <p className="text-sm text-gray-500">
+                      {request.machineName}
+                    </p>
+                  </div>
+                  <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(request.status)}`}>
+                    {getStatusIcon(request.status)}
+                    {getStatusText(request.status)}
+                  </span>
                 </div>
-              )}
 
-              {request.status === 'pickup_scheduled' && (
-                <div className="mt-4">
-                  <Button
-                    onClick={() => handleConfirmReturn(request.id)}
-                    disabled={updatingRequest === request.id}
-                    className="w-full"
-                  >
-                    Confirmar Devolução
-                  </Button>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Data da Solicitação</p>
+                    <p className="mt-1 text-sm">
+                      {format(new Date(request.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Local</p>
+                    <p className="mt-1 text-sm">{request.location}</p>
+                  </div>
                 </div>
-              )}
+
+                {request.returnNotes && (
+                  <div className="mt-4 rounded-lg bg-gray-50 p-3">
+                    <p className="text-sm font-medium text-gray-600">Observações</p>
+                    <p className="mt-1 text-sm text-gray-600">{request.returnNotes}</p>
+                  </div>
+                )}
+
+                <div className="mt-4 flex gap-2">
+                  {request.status === 'return_requested' && (
+                    <Button
+                      onClick={() => handleSchedulePickup(request.id)}
+                      disabled={updatingRequest === request.id}
+                      className="flex-1"
+                    >
+                      <Truck className="mr-2 h-4 w-4" />
+                      Agendar Coleta
+                    </Button>
+                  )}
+                  {request.status === 'pickup_scheduled' && (
+                    <Button
+                      onClick={() => handleConfirmReturn(request.id)}
+                      disabled={updatingRequest === request.id}
+                      className="flex-1"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Confirmar Devolução
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

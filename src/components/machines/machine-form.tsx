@@ -24,6 +24,7 @@ export function MachineForm({ machine }: MachineFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [formData, setFormData] = useState({
     name: machine?.name || '',
@@ -33,7 +34,34 @@ export function MachineForm({ machine }: MachineFormProps) {
     shortDescription: machine?.shortDescription || '',
     longDescription: machine?.longDescription || '',
     imageUrl: machine?.imageUrl || '',
+    featured: machine?.featured || false,
   });
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Nome é obrigatório';
+    }
+    
+    if (!formData.workType) {
+      errors.workType = 'Tipo de trabalho é obrigatório';
+    }
+    
+    if (!formData.workPhase) {
+      errors.workPhase = 'Fase de trabalho é obrigatória';
+    }
+    
+    if (!formData.application) {
+      errors.application = 'Tipo de aplicação é obrigatório';
+    }
+    
+    if (formData.shortDescription && formData.shortDescription.length > 150) {
+      errors.shortDescription = 'Descrição curta deve ter no máximo 150 caracteres';
+    }
+    
+    return errors;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +70,10 @@ export function MachineForm({ machine }: MachineFormProps) {
       return;
     }
 
-    if (!formData.name || !formData.workType || !formData.workPhase || !formData.application) {
-      setError('Por favor, preencha todos os campos obrigatórios');
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setError('Por favor, corrija os erros no formulário');
+      setFieldErrors(validationErrors);
       return;
     }
 
@@ -95,6 +125,7 @@ export function MachineForm({ machine }: MachineFormProps) {
               className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               placeholder="Digite o nome da máquina"
             />
+            {fieldErrors.name && <p className="text-sm text-red-500">{fieldErrors.name}</p>}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -113,6 +144,7 @@ export function MachineForm({ machine }: MachineFormProps) {
                   </option>
                 ))}
               </select>
+              {fieldErrors.workType && <p className="text-sm text-red-500">{fieldErrors.workType}</p>}
             </div>
 
             <div>
@@ -130,6 +162,7 @@ export function MachineForm({ machine }: MachineFormProps) {
                   </option>
                 ))}
               </select>
+              {fieldErrors.workPhase && <p className="text-sm text-red-500">{fieldErrors.workPhase}</p>}
             </div>
 
             <div>
@@ -147,6 +180,7 @@ export function MachineForm({ machine }: MachineFormProps) {
                   </option>
                 ))}
               </select>
+              {fieldErrors.application && <p className="text-sm text-red-500">{fieldErrors.application}</p>}
             </div>
           </div>
 
@@ -159,8 +193,9 @@ export function MachineForm({ machine }: MachineFormProps) {
               onChange={(e) => setFormData(prev => ({ ...prev, shortDescription: e.target.value }))}
               className="w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               placeholder="Breve descrição da máquina"
-              maxLength={100}
+              maxLength={150}
             />
+            {fieldErrors.shortDescription && <p className="text-sm text-red-500">{fieldErrors.shortDescription}</p>}
           </div>
 
           <div>
@@ -172,6 +207,23 @@ export function MachineForm({ machine }: MachineFormProps) {
               className="h-32 w-full rounded-lg border p-2 focus:border-primary-600 focus:outline-none"
               placeholder="Descrição detalhada da máquina"
             />
+          </div>
+
+          <div className="mb-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.featured}
+                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Produto em Destaque
+              </span>
+            </label>
+            <p className="mt-1 text-sm text-gray-500">
+              Marque esta opção para exibir este produto na seção de destaques
+            </p>
           </div>
         </div>
       </Card>

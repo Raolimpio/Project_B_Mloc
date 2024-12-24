@@ -3,7 +3,7 @@ import { MessageSquare, Clock, CheckCircle, Truck, Package, MapPin, ArrowLeft } 
 import { Button } from '@/components/ui/button';
 import { Feedback } from '@/components/ui/feedback';
 import { ReturnModal } from './return-modal';
-import { getQuotesByRequester, updateQuoteStatus } from '@/lib/quotes';
+import { subscribeToQuotes, updateQuoteStatus } from '@/lib/quotes';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Quote } from '@/types/quote';
@@ -14,6 +14,19 @@ interface MyRentalsProps {
 
 type StatusFilter = 'all' | 'active' | 'returned';
 
+const ACTIVE_RENTAL_STATES = [
+  'accepted',         // Aprovado pelo anunciante
+  'in_preparation',   // Em preparação
+  'in_transit',      // Em rota de entrega
+  'delivered',       // Entregue ao cliente
+  'return_requested', // Cliente solicitou devolução
+  'return_in_transit' // Em processo de devolução
+] as const;
+
+const COMPLETED_RENTAL_STATES = [
+  'completed'  // Devolução confirmada pelo anunciante
+] as const;
+
 export function MyRentals({ userId }: MyRentalsProps) {
   const [rentals, setRentals] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,22 +36,24 @@ export function MyRentals({ userId }: MyRentalsProps) {
   const [showReturnModal, setShowReturnModal] = useState(false);
 
   useEffect(() => {
-    loadRentals();
-  }, [userId]);
-
-  async function loadRentals() {
-    try {
-      const quotesData = await getQuotesByRequester(userId);
-      setRentals(quotesData.filter(quote => 
-        ['accepted', 'in_preparation', 'in_transit', 'delivered', 'return_requested', 'pickup_scheduled', 'returned'].includes(quote.status)
-      ));
-    } catch (error) {
-      console.error('Error loading rentals:', error);
-      setError('Não foi possível carregar seus aluguéis');
-    } finally {
+    const unsubscribe = subscribeToQuotes(userId, 'requester', (quotesData) => {
+      console.log('Dados brutos recebidos:', quotesData);
+      
+      // Filtrar apenas os orçamentos que são locações ativas ou finalizadas
+      const rentalsData = quotesData.filter(quote => {
+        const isActive = ['accepted', 'in_preparation', 'in_transit', 'delivered', 'return_requested', 'return_in_transit'].includes(quote.status);
+        const isCompleted = quote.status === 'completed';
+        console.log(`Quote ${quote.id} - Status: ${quote.status}, isActive: ${isActive}, isCompleted: ${isCompleted}`);
+        return isActive || isCompleted;
+      });
+      
+      console.log('Locações filtradas:', rentalsData);
+      setRentals(rentalsData);
       setLoading(false);
-    }
-  }
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
 
   const handleReturn = (rental: Quote) => {
     setSelectedRental(rental);
@@ -52,14 +67,15 @@ export function MyRentals({ userId }: MyRentalsProps) {
       await updateQuoteStatus(selectedRental.id, 'return_requested', {
         returnType,
         returnNotes: notes,
-        value: selectedRental.value,
       });
-      await loadRentals();
       setShowReturnModal(false);
       setSelectedRental(null);
+      setLoading(false);
+      setError('');
     } catch (error) {
       console.error('Error processing return:', error);
       setError('Não foi possível processar a devolução');
+      setLoading(false);
     }
   };
 
@@ -74,8 +90,10 @@ export function MyRentals({ userId }: MyRentalsProps) {
       case 'delivered':
         return <MapPin className="h-4 w-4" />;
       case 'return_requested':
-        return <Clock className="h-4 w-4" />;
-      case 'returned':
+        return <ArrowLeft className="h-4 w-4" />;
+      case 'return_in_transit':
+        return <Truck className="h-4 w-4" />;
+      case 'completed':
         return <CheckCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
@@ -94,10 +112,10 @@ export function MyRentals({ userId }: MyRentalsProps) {
         return 'Entregue';
       case 'return_requested':
         return 'Devolução Solicitada';
-      case 'pickup_scheduled':
-        return 'Coleta Agendada';
-      case 'returned':
-        return 'Devolvido';
+      case 'return_in_transit':
+        return 'Em Devolução';
+      case 'completed':
+        return 'Finalizado';
       default:
         return 'Status Desconhecido';
     }
@@ -115,9 +133,9 @@ export function MyRentals({ userId }: MyRentalsProps) {
         return 'bg-purple-100 text-purple-800';
       case 'return_requested':
         return 'bg-orange-100 text-orange-800';
-      case 'pickup_scheduled':
+      case 'return_in_transit':
         return 'bg-indigo-100 text-indigo-800';
-      case 'returned':
+      case 'completed':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -126,10 +144,10 @@ export function MyRentals({ userId }: MyRentalsProps) {
 
   const filteredRentals = rentals.filter(rental => {
     if (statusFilter === 'active') {
-      return ['accepted', 'in_preparation', 'in_transit', 'delivered'].includes(rental.status);
+      return ACTIVE_RENTAL_STATES.includes(rental.status);
     }
     if (statusFilter === 'returned') {
-      return rental.status === 'returned';
+      return COMPLETED_RENTAL_STATES.includes(rental.status);
     }
     return true;
   });
@@ -162,10 +180,10 @@ export function MyRentals({ userId }: MyRentalsProps) {
   }
 
   const activeCount = rentals.filter(r => 
-    ['accepted', 'in_preparation', 'in_transit', 'delivered'].includes(r.status)
+    ACTIVE_RENTAL_STATES.includes(r.status)
   ).length;
 
-  const returnedCount = rentals.filter(r => r.status === 'returned').length;
+  const returnedCount = rentals.filter(r => COMPLETED_RENTAL_STATES.includes(r.status)).length;
 
   return (
     <div className="space-y-6">

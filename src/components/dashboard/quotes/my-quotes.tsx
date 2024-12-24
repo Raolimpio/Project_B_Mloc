@@ -2,43 +2,94 @@ import { useState, useEffect } from 'react';
 import { MessageSquare, Clock, CheckCircle, XCircle, Package, Truck, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Feedback } from '@/components/ui/feedback';
-import { getQuotesByRequester, updateQuoteStatus } from '@/lib/quotes';
+import { Card } from '@/components/ui/card';
+import { subscribeToQuotes, updateQuoteStatus } from '@/lib/quotes';
 import type { Quote } from '@/types/quote';
+import { MachineImageFallback } from "@/components/ui/machine-image-fallback";
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { IMaquina } from '@/types/machine.types';
 
 interface MyQuotesProps {
   userId: string;
 }
 
+interface QuoteWithMachine extends Quote {
+  machine?: IMaquina;
+}
+
 type TabType = 'pending' | 'responded' | 'approved';
+
+const formatAddress = (location: any): string => {
+  if (typeof location === 'string') return location;
+  
+  if (typeof location === 'object' && location !== null) {
+    const address = location;
+    return `${address.street}, ${address.number}${address.complement ? ` - ${address.complement}` : ''}, ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zipCode}`;
+  }
+  
+  return 'Endereço não disponível';
+};
 
 export function MyQuotes({ userId }: MyQuotesProps) {
   const [activeTab, setActiveTab] = useState<TabType>('pending');
-  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quotes, setQuotes] = useState<QuoteWithMachine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingQuote, setUpdatingQuote] = useState<string | null>(null);
 
   useEffect(() => {
-    loadQuotes();
-  }, [userId]);
-
-  async function loadQuotes() {
-    try {
-      const quotesData = await getQuotesByRequester(userId);
-      setQuotes(quotesData);
-    } catch (error) {
-      console.error('Error loading quotes:', error);
-      setError('Não foi possível carregar seus orçamentos');
-    } finally {
+    const unsubscribe = subscribeToQuotes(userId, 'requester', async (quotesData) => {
+      console.log('Carregando dados das máquinas para os orçamentos:', quotesData);
+      
+      // Carregar dados da máquina para cada orçamento
+      const quotesWithMachines = await Promise.all(
+        quotesData.map(async (quote) => {
+          try {
+            console.log('Carregando dados da máquina:', quote.machineId);
+            const machineDoc = await getDoc(doc(db, 'machines', quote.machineId));
+            
+            if (machineDoc.exists()) {
+              const machineData = machineDoc.data();
+              console.log('Dados da máquina carregados:', {
+                id: machineDoc.id,
+                fotoPrincipal: machineData.fotoPrincipal,
+                imagemProduto: machineData.imagemProduto,
+                fotos: machineData.fotos
+              });
+              
+              return {
+                ...quote,
+                machine: { 
+                  id: machineDoc.id,
+                  ...machineData,
+                  // Map old image fields to new format
+                  fotos: machineData.fotos || [],
+                  fotoPrincipal: machineData.fotoPrincipal || machineData.imagemProduto || null
+                } as IMaquina
+              };
+            }
+            console.warn('Máquina não encontrada:', quote.machineId);
+            return quote;
+          } catch (error) {
+            console.error('Erro ao carregar máquina:', quote.machineId, error);
+            return quote;
+          }
+        })
+      );
+      
+      console.log('Orçamentos com dados das máquinas:', quotesWithMachines);
+      setQuotes(quotesWithMachines);
       setLoading(false);
-    }
-  }
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
 
   const handleQuoteAction = async (quoteId: string, status: 'accepted' | 'rejected') => {
     try {
       setUpdatingQuote(quoteId);
       await updateQuoteStatus(quoteId, status);
-      await loadQuotes(); // Recarrega os orçamentos para ter os dados mais atualizados
     } catch (error) {
       console.error('Error updating quote:', error);
       setError('Não foi possível atualizar o orçamento');
@@ -51,8 +102,8 @@ export function MyQuotes({ userId }: MyQuotesProps) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-2 text-gray-600">Carregando orçamentos...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="mt-2 text-muted-foreground">Carregando orçamentos...</p>
         </div>
       </div>
     );
@@ -64,13 +115,13 @@ export function MyQuotes({ userId }: MyQuotesProps) {
 
   if (quotes.length === 0) {
     return (
-      <div className="text-center">
-        <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-medium">Nenhum orçamento encontrado</h3>
-        <p className="mt-1 text-gray-500">
+      <Card className="flex flex-col items-center justify-center p-8">
+        <MessageSquare className="h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-medium">Nenhum orçamento encontrado</h3>
+        <p className="mt-2 text-center text-muted-foreground">
           Você ainda não solicitou nenhum orçamento.
         </p>
-      </div>
+      </Card>
     );
   }
 
@@ -144,114 +195,124 @@ export function MyQuotes({ userId }: MyQuotesProps) {
     }
   };
 
-  const renderQuoteCard = (quote: Quote) => (
-    <div key={quote.id} className="flex overflow-hidden rounded-lg border bg-white shadow-sm">
-      <div className="relative h-auto w-48">
-        <img
-          src={quote.machinePhoto}
-          alt={quote.machineName}
-          className="h-full w-full object-cover"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&q=80&w=800';
-          }}
-        />
-      </div>
-      
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-medium">{quote.machineName}</h3>
-            <p className="text-sm text-gray-500">
-              Solicitado em {quote.createdAt.toLocaleDateString()}
-            </p>
-          </div>
-          <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(quote.status)}`}>
-            {getStatusIcon(quote.status)}
-            {getStatusText(quote.status)}
-          </span>
+  const renderQuoteCard = (quote: QuoteWithMachine) => (
+    <Card key={quote.id} className="overflow-hidden">
+      <div className="flex flex-col sm:flex-row">
+        <div className="relative h-48 w-full sm:h-auto sm:w-48">
+          {quote.machine?.fotoPrincipal || quote.machine?.fotos?.[0] ? (
+            <img
+              src={quote.machine.fotoPrincipal || quote.machine.fotos[0]}
+              alt={quote.machineName}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/placeholder-image.jpg';
+              }}
+            />
+          ) : (
+            <MachineImageFallback />
+          )}
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Período</p>
-            <p className="mt-1 text-sm">
-              {new Date(quote.startDate).toLocaleDateString()} até{' '}
-              {new Date(quote.endDate).toLocaleDateString()}
-            </p>
+        <div className="flex flex-1 flex-col p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">{quote.machineName}</h3>
+              <p className="text-sm text-muted-foreground">
+                Solicitado em {quote.createdAt.toLocaleDateString()}
+              </p>
+            </div>
+            <span className={`inline-flex items-center gap-1 self-start rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(quote.status)}`}>
+              {getStatusIcon(quote.status)}
+              {getStatusText(quote.status)}
+            </span>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Local</p>
-            <p className="mt-1 text-sm">{quote.location}</p>
+
+          <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Período do Aluguel</p>
+              <p className="mt-1">
+                {new Date(quote.startDate).toLocaleDateString()} até{' '}
+                {new Date(quote.endDate).toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Local de Entrega</p>
+              <p className="mt-1">{formatAddress(quote.location)}</p>
+            </div>
           </div>
+
+          {quote.value && (
+            <div className="mt-4 rounded-lg bg-muted/50 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">Valor do Orçamento</p>
+                <p className="text-lg font-semibold text-primary">
+                  R$ {quote.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              {quote.message && (
+                <p className="mt-2 text-sm text-muted-foreground">{quote.message}</p>
+              )}
+            </div>
+          )}
+
+          {quote.status === 'quoted' && (
+            <div className="mt-4 flex gap-2 border-t pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => handleQuoteAction(quote.id, 'rejected')}
+                disabled={updatingQuote === quote.id}
+              >
+                Recusar
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => handleQuoteAction(quote.id, 'accepted')}
+                disabled={updatingQuote === quote.id}
+              >
+                {updatingQuote === quote.id ? 'Processando...' : 'Aprovar'}
+              </Button>
+            </div>
+          )}
         </div>
-
-        {quote.value && (
-          <div className="mt-4 rounded-lg bg-gray-50 p-3">
-            <p className="text-sm font-medium text-gray-600">Valor do Orçamento</p>
-            <p className="mt-1 text-lg font-semibold">
-              R$ {quote.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-            {quote.message && (
-              <p className="mt-2 text-sm text-gray-600">{quote.message}</p>
-            )}
-          </div>
-        )}
-
-        {quote.status === 'quoted' && (
-          <div className="mt-4 flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => handleQuoteAction(quote.id, 'rejected')}
-              disabled={updatingQuote === quote.id}
-            >
-              Recusar
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => handleQuoteAction(quote.id, 'accepted')}
-              disabled={updatingQuote === quote.id}
-            >
-              {updatingQuote === quote.id ? 'Processando...' : 'Aprovar'}
-            </Button>
-          </div>
-        )}
       </div>
-    </div>
+    </Card>
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant={activeTab === 'pending' ? 'primary' : 'outline'}
-          onClick={() => setActiveTab('pending')}
-          className="flex items-center gap-1"
-        >
-          <Clock className="h-4 w-4" />
-          Solicitados ({pendingQuotes.length})
-        </Button>
-        <Button
-          size="sm"
-          variant={activeTab === 'responded' ? 'primary' : 'outline'}
-          onClick={() => setActiveTab('responded')}
-          className="flex items-center gap-1"
-        >
-          <MessageSquare className="h-4 w-4" />
-          Em Aprovação ({respondedQuotes.length})
-        </Button>
-        <Button
-          size="sm"
-          variant={activeTab === 'approved' ? 'primary' : 'outline'}
-          onClick={() => setActiveTab('approved')}
-          className="flex items-center gap-1"
-        >
-          <CheckCircle className="h-4 w-4" />
-          Finalizados ({finishedQuotes.length})
-        </Button>
-      </div>
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={activeTab === 'pending' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('pending')}
+            className="flex items-center gap-1"
+          >
+            <Clock className="h-4 w-4" />
+            Solicitados ({pendingQuotes.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={activeTab === 'responded' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('responded')}
+            className="flex items-center gap-1"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Em Aprovação ({respondedQuotes.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={activeTab === 'approved' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('approved')}
+            className="flex items-center gap-1"
+          >
+            <CheckCircle className="h-4 w-4" />
+            Finalizados ({finishedQuotes.length})
+          </Button>
+        </div>
+      </Card>
 
       <div className="space-y-4">
         {activeTab === 'pending' && pendingQuotes.map(renderQuoteCard)}

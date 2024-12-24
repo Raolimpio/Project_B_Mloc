@@ -1,4 +1,4 @@
-import { ref, listAll, deleteObject } from 'firebase/storage';
+import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 import Logger from './logger';
 
@@ -21,14 +21,17 @@ export async function initializeStorageStructure() {
     Logger.info('Starting storage structure verification');
     
     // Create a test file to verify permissions
-    const testRef = ref(storage, `machines/test.txt`);
+    const testRef = ref(storage, 'test.txt');
     const testBlob = new Blob(['test'], { type: 'text/plain' });
     
     try {
-      await Promise.race([
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
-        fetch(testRef.toString())
-      ]);
+      // Upload test file
+      await uploadBytes(testRef, testBlob);
+      // Get download URL (isso vai verificar se temos acesso)
+      await getDownloadURL(testRef);
+      // Deletar arquivo de teste
+      await deleteObject(testRef);
+      
       Logger.info('Storage access verified successfully');
     } catch (error) {
       Logger.warn('Storage not initialized yet - will be created on first use', { error });
@@ -49,16 +52,16 @@ export async function cleanupTempFiles() {
     
     const deletePromises = tempFiles.items.map(fileRef => deleteObject(fileRef));
     await Promise.all(deletePromises);
-    
-    Logger.info('Temporary files cleaned successfully');
+
+    Logger.info('Temporary files cleaned up successfully');
+    return true;
   } catch (error) {
-    Logger.error('Error cleaning temporary files', error as Error);
+    Logger.error('Error cleaning up temporary files', error as Error);
+    return false;
   }
 }
 
 // Generate complete file path
 export function getStoragePath(folder: keyof typeof STORAGE_PATHS, filename: string): string {
-  const timestamp = Date.now();
-  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-  return `${folder}/${timestamp}-${sanitizedFilename}`;
+  return `${STORAGE_PATHS[folder]}/${filename}`;
 }

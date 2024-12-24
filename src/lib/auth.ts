@@ -30,7 +30,8 @@ export async function registerUser(
         city: '',
         state: '',
         zipCode: '',
-      }
+      },
+      deliveryAddresses: [] // Inicializa o array de endereços vazio
     };
 
     // Salvar no Firestore com o mesmo ID do Auth

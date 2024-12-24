@@ -7,7 +7,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', ...props }, ref) => {
+  ({ className, variant = 'primary', size = 'md', asChild, ...props }, ref) => {
+    // Remove asChild do spread para não passar para o elemento button
+    const { asChild: _, ...restProps } = props;
+    
     return (
       <button
         className={cn(
@@ -15,9 +18,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           'disabled:pointer-events-none disabled:opacity-50',
           {
-            'bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-600': variant === 'primary',
-            'bg-primary-50 text-primary-600 hover:bg-primary-100': variant === 'secondary',
-            'border border-primary-200 bg-transparent text-primary-600 hover:bg-primary-50 hover:border-primary-300': variant === 'outline',
+            'bg-primary text-white hover:bg-primary-700 focus-visible:ring-primary': variant === 'primary',
+            'bg-primary-50 text-primary hover:bg-primary-100': variant === 'secondary',
+            'border border-primary-200 bg-transparent text-primary hover:bg-primary-50 hover:border-primary-300': variant === 'outline',
             'h-8 px-3 text-sm': size === 'sm',
             'h-10 px-4': size === 'md',
             'h-12 px-6 text-lg': size === 'lg',
@@ -25,7 +28,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         ref={ref}
-        {...props}
+        {...restProps}
       />
     );
   }

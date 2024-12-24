@@ -35,18 +35,26 @@ export function OptimizedImage({
   }, [src, imgSrc, priority]);
 
   // Função para gerar URL otimizada
-  const getOptimizedUrl = (url: string): string => {
-    if (url.includes('unsplash.com')) {
-      // Otimização para Unsplash
-      const baseUrl = url.split('?')[0];
-      return `${baseUrl}?auto=format&q=${quality}&w=800`;
-    }
-    if (url.includes('firebasestorage.googleapis.com')) {
-      // Mantém a URL do Firebase como está, já que não suporta parâmetros de transformação
+  const getOptimizedUrl = (url: string | undefined): string => {
+    // Se a URL for undefined ou vazia, retorna a URL de fallback
+    if (!url) return fallbackSrc;
+
+    try {
+      if (url.includes('unsplash.com')) {
+        // Otimização para Unsplash
+        const baseUrl = url.split('?')[0];
+        return `${baseUrl}?auto=format&q=${quality}&w=800`;
+      }
+      if (url.includes('firebasestorage.googleapis.com')) {
+        // Mantém a URL do Firebase como está, já que não suporta parâmetros de transformação
+        return url;
+      }
+      // Adicione mais casos para outros provedores de imagem conforme necessário
       return url;
+    } catch (error) {
+      console.error('Erro ao processar URL da imagem:', error);
+      return fallbackSrc;
     }
-    // Adicione mais casos para outros provedores de imagem conforme necessário
-    return url;
   };
 
   const aspectRatioClass = {

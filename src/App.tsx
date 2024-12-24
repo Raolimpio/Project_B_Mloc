@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './contexts/auth-context';
+import { ThemeProvider } from './contexts/theme-context';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { HomePage } from './pages/home';
 import { ProtectedRoute } from './components/auth/protected-route';
 import RegisterPage from './pages/auth/register';
@@ -14,6 +16,8 @@ import CategoriesPage from './pages/categories';
 import ProfilePage from './pages/profile';
 import { PageTransition } from './components/layout/page-transition';
 import { MainLayout } from './components/layout/main-layout';
+import { ToastContainer } from './components/ui/toast';
+import { useToast } from './hooks/use-toast';
 
 function AppRoutes() {
   const location = useLocation();
@@ -68,14 +72,21 @@ function AppRoutes() {
 }
 
 function App() {
+  const { toasts } = useToast();
+  
   return (
-    <Router>
+    <ThemeProvider>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <AppRoutes />
-        </div>
+        <NotificationProvider>
+          <Router>
+            <div className="min-h-screen">
+              <AppRoutes />
+              <ToastContainer toasts={toasts} />
+            </div>
+          </Router>
+        </NotificationProvider>
       </AuthProvider>
-    </Router>
+    </ThemeProvider>
   );
 }
 

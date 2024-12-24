@@ -1,19 +1,25 @@
 export interface UserProfile {
   uid: string;
-  type: 'individual' | 'company';
   email: string;
-  fullName: string;
-  cpfCnpj: string;
-  phone: string;
-  photoURL?: string;
-  address?: {
-    street: string;
-    number: string;
-    complement?: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
+  displayName: string | null;
+  phoneNumber: string | null;
+  photoURL: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface Address {
+  id: string;
+  userId: string;
+  label: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }

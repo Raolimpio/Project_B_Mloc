@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import debounce from 'lodash/debounce';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,12 @@ interface Categoria {
   ordem: number;
 }
 
+interface HeroBannerSettings {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+}
+
 export function HeroSection() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +44,11 @@ export function HeroSection() {
   const [filteredResults, setFilteredResults] = useState<IMaquina[]>([]);
   const [loading, setLoading] = useState(true);
   const [gruposCategoria, setGruposCategoria] = useState<{[key: string]: Categoria}>({});
+  const [bannerSettings, setBannerSettings] = useState<HeroBannerSettings>({
+    imageUrl: '',
+    title: 'Encontre o equipamento ideal para seu projeto',
+    subtitle: 'Alugue máquinas e equipamentos de qualidade'
+  });
 
   // Carregar todas as máquinas uma vez só
   useEffect(() => {
@@ -109,6 +120,33 @@ export function HeroSection() {
     carregarGrupos();
   }, []);
 
+  // Carregar configurações do banner
+  useEffect(() => {
+    const loadBannerSettings = async () => {
+      try {
+        console.log('Carregando banner na home...');
+        const siteSettingsRef = doc(db, 'site-settings', 'home');
+        const siteSettingsDoc = await getDoc(siteSettingsRef);
+        
+        if (siteSettingsDoc.exists()) {
+          const data = siteSettingsDoc.data();
+          console.log('Dados do site-settings:', data);
+          if (data.heroBanner) {
+            console.log('Banner encontrado na home:', data.heroBanner);
+            setBannerSettings(prev => ({
+              ...prev,
+              ...data.heroBanner
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações do banner:', error);
+      }
+    };
+
+    loadBannerSettings();
+  }, []);
+
   const handleMachineClick = (machine: IMaquina) => {
     if (machine.id) {
       navigate(`/machines/${machine.id}`);
@@ -172,35 +210,54 @@ export function HeroSection() {
   }, [searchTerm]);
 
   return (
-    <div className="relative">
-      <div className="container mx-auto px-4 py-16 sm:py-24">
-        <div className="max-w-4xl mx-auto text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">
-            Encontre o Equipamento Ideal para seu Projeto
-          </h1>
-          <p className="text-lg sm:text-xl text-white/90 mb-12">
-            Locação simplificada de máquinas e equipamentos para construção civil
-          </p>
+    <div className="relative bg-gray-50">
+      <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
+        {/* Banner com bordas arredondadas e contido */}
+        <div className="relative overflow-hidden rounded-2xl bg-white shadow-lg">
+          {/* Background image sem efeitos */}
+          {bannerSettings.imageUrl && (
+            <img
+              src={bannerSettings.imageUrl}
+              alt="Banner background"
+              className="h-[400px] w-full object-cover"
+            />
+          )}
+
+          {/* Textos opcionais */}
+          {(bannerSettings.title || bannerSettings.subtitle) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+              {bannerSettings.title && (
+                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+                  {bannerSettings.title}
+                </h1>
+              )}
+              {bannerSettings.subtitle && (
+                <p className="mx-auto mt-3 max-w-md text-base text-gray-100 sm:text-lg md:mt-5 md:max-w-3xl md:text-xl">
+                  {bannerSettings.subtitle}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Barra de Busca */}
-        <div className="relative max-w-2xl mx-auto mb-16">
+        {/* Barra de busca */}
+        <div className="relative -mt-10 max-w-2xl mx-auto">
           <div className="relative">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Busque por máquinas, marcas ou modelos..."
-              className="w-full px-6 py-4 rounded-xl bg-white/95 backdrop-blur-sm 
-                text-gray-900 placeholder-gray-500 shadow-lg
+              placeholder="Busque por máquinas..."
+              className="w-full px-4 sm:px-6 py-3 sm:py-4 rounded-xl bg-white/95 backdrop-blur-sm 
+                text-gray-900 placeholder-gray-500 shadow-lg text-sm sm:text-base
                 focus:outline-none focus:ring-2 focus:ring-secondary-500
                 transition-all duration-200"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
               {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-secondary-500 border-t-transparent" />
+                <div className="h-4 w-4 sm:h-5 sm:w-5 animate-spin rounded-full border-2 border-secondary-500 border-t-transparent" />
               ) : (
-                <Search className="w-5 h-5 text-secondary-500" />
+                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-500" />
               )}
             </div>
           </div>
@@ -208,24 +265,24 @@ export function HeroSection() {
           {/* Resultados da busca */}
           {filteredResults.length > 0 && (
             <div className="absolute w-full mt-2 bg-white rounded-xl shadow-xl border-2 border-primary-100 
-              max-h-96 overflow-y-auto z-50">
+              max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
               {filteredResults.map((machine) => (
                 <button
                   key={machine.id}
                   onClick={() => handleMachineClick(machine)}
-                  className="w-full px-4 py-3 text-left hover:bg-primary-50 flex items-center gap-4
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-primary-50 flex items-center gap-2 sm:gap-4
                     border-b border-gray-100 last:border-none transition-colors duration-200"
                 >
                   {machine.imagemProduto && (
                     <img
                       src={machine.imagemProduto}
                       alt={machine.nome}
-                      className="w-12 h-12 object-cover rounded-lg"
+                      className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded-lg"
                     />
                   )}
                   <div>
-                    <h3 className="font-medium text-primary-600">{machine.nome}</h3>
-                    <p className="text-sm text-gray-500">{machine.descricaoBreve}</p>
+                    <h3 className="font-medium text-primary-600 text-sm sm:text-base">{machine.nome}</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 line-clamp-1">{machine.descricaoBreve}</p>
                   </div>
                 </button>
               ))}
@@ -235,7 +292,7 @@ export function HeroSection() {
 
         {/* Categorias Populares */}
         <div className="flex justify-center w-full">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
+          <div className="grid grid-cols-3 gap-3 sm:gap-8 max-w-2xl mx-auto">
             {Object.values(gruposCategoria)
               .sort((a, b) => a.ordem - b.ordem)
               .slice(0, 3)
@@ -245,7 +302,7 @@ export function HeroSection() {
                   onClick={() => handleCategoriaClick(grupo.id)}
                   className="flex flex-col items-center"
                 >
-                  <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white mb-3">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-white mb-2 sm:mb-3">
                     {grupo.iconeUrl && (
                       <img
                         src={grupo.iconeUrl}
@@ -254,7 +311,7 @@ export function HeroSection() {
                       />
                     )}
                   </div>
-                  <p className="text-sm font-medium text-white text-center">
+                  <p className="text-xs sm:text-sm font-medium text-white text-center">
                     {grupo.nome}
                   </p>
                 </button>

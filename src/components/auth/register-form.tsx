@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { UserTypeSelector } from './user-type-selector';
 import { AuthSocialButtons } from './auth-social-buttons';
 import { registerUser, signInWithGoogle } from '@/lib/auth';
+import { validateCPF, validateCNPJ, validateEmail, validatePassword, formatCPFCNPJ, formatPhone } from '@/lib/utils/validation';
 import type { UserProfile } from '@/types/auth';
 
 type UserType = 'individual' | 'company';
@@ -26,29 +27,69 @@ export function RegisterForm() {
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    let formattedValue = value;
+
+    if (name === 'cpfCnpj') {
+      formattedValue = formatCPFCNPJ(value);
+    } else if (name === 'phone') {
+      formattedValue = formatPhone(value);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: formattedValue
     }));
   };
 
   const validateStep1 = () => {
-    if (!formData.email || !formData.password) {
-      setError('Por favor, preencha todos os campos');
+    const errors: string[] = [];
+
+    if (!formData.email || !validateEmail(formData.email)) {
+      errors.push('Email inválido');
+    }
+
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      errors.push(...passwordValidation.errors);
+    }
+
+    if (errors.length > 0) {
+      setError(errors.join('\n'));
       return false;
     }
-    if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
-      return false;
-    }
+
     return true;
   };
 
   const validateStep2 = () => {
-    if (!formData.fullName || !formData.cpfCnpj || !formData.phone) {
-      setError('Por favor, preencha todos os campos');
+    const errors: string[] = [];
+
+    if (!formData.fullName?.trim()) {
+      errors.push('Nome completo é obrigatório');
+    }
+
+    if (!formData.cpfCnpj) {
+      errors.push('CPF/CNPJ é obrigatório');
+    } else {
+      const isValid = userType === 'individual' 
+        ? validateCPF(formData.cpfCnpj)
+        : validateCNPJ(formData.cpfCnpj);
+      
+      if (!isValid) {
+        errors.push(userType === 'individual' ? 'CPF inválido' : 'CNPJ inválido');
+      }
+    }
+
+    if (!formData.phone?.trim()) {
+      errors.push('Telefone é obrigatório');
+    }
+
+    if (errors.length > 0) {
+      setError(errors.join('\n'));
       return false;
     }
+
     return true;
   };
 

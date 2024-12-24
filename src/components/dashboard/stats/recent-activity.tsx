@@ -11,6 +11,7 @@ interface RecentActivityProps {
 export function RecentActivity({ quotes }: RecentActivityProps) {
   const recentActivity = useMemo(() => {
     return quotes
+      .filter(quote => quote.updatedAt instanceof Date)
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, 5);
   }, [quotes]);

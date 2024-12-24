@@ -1,28 +1,70 @@
 import { useEffect, useState } from 'react';
-import { collection, query, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { MachineCard } from '@/components/machines/machine-card';
-import type { Machine } from '@/types';
+import type { IMaquina } from '@/types/machine.types';
 
 export function FeaturedMachines() {
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machines, setMachines] = useState<IMaquina[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadMachines() {
       try {
+        console.log('Carregando máquinas em destaque...');
         const machinesRef = collection(db, 'machines');
-        const q = query(machinesRef, limit(6));
-        const snapshot = await getDocs(q);
         
-        const machinesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Machine[];
+        // Primeiro vamos ver todas as máquinas
+        const allMachinesSnapshot = await getDocs(machinesRef);
+        console.log('Total de máquinas:', allMachinesSnapshot.size);
+        
+        // Vamos ver os dados completos das 3 primeiras máquinas
+        console.log('Dados das primeiras máquinas:');
+        allMachinesSnapshot.docs.slice(0, 3).forEach(doc => {
+          const data = doc.data();
+          console.log('Máquina:', {
+            id: doc.id,
+            nome: data.nome,
+            destaque: data.destaque,
+            fotos: data.fotos, // Ver o array completo de fotos
+            fotoPrincipal: data.fotoPrincipal,
+            imagemProduto: data.imagemProduto // Verificar se existe este campo
+          });
+        });
+        
+        // Agora vamos ver as máquinas em destaque
+        const q = query(
+          machinesRef,
+          where('destaque', '==', true),
+          limit(6)
+        );
+        const snapshot = await getDocs(q);
+        console.log('Total de máquinas em destaque:', snapshot.size);
+        
+        if (snapshot.empty) {
+          console.log('Nenhuma máquina encontrada com destaque = true');
+          // Vamos ver os dados de algumas máquinas para debug
+          allMachinesSnapshot.docs.slice(0, 3).forEach(doc => {
+            console.log('Exemplo de máquina:', {
+              id: doc.id,
+              destaque: doc.data().destaque,
+              nome: doc.data().nome
+            });
+          });
+        }
+        
+        const machinesData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log('Dados completos da máquina em destaque:', data);
+          return {
+            id: doc.id,
+            ...data
+          } as IMaquina;
+        });
         
         setMachines(machinesData);
       } catch (error) {
-        console.error('Error loading machines:', error);
+        console.error('Erro ao carregar máquinas em destaque:', error);
       } finally {
         setLoading(false);
       }
@@ -56,14 +98,23 @@ export function FeaturedMachines() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {machines.map((machine) => (
-          <div key={machine.id} className="transform transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-            <MachineCard
-              machine={machine}
-              onRentClick={(machine) => console.log('Rent click:', machine.id)}
-            />
+        {machines.length > 0 ? (
+          machines.map((machine) => (
+            <div key={machine.id}>
+              <MachineCard
+                machine={machine}
+                onRentClick={(machine) => {
+                  console.log('Solicitando orçamento para:', machine.id);
+                  // TODO: Implementar lógica de orçamento
+                }}
+              />
+            </div>
+          ))
+        ) : (
+          <div className="col-span-3 text-center py-8">
+            <p className="text-gray-500">Nenhuma máquina em destaque no momento</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

@@ -3,10 +3,11 @@ import { User, UserCircle, Phone, Mail, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Feedback } from '@/components/ui/feedback';
 import { PersonalInfoForm } from './personal-info-form';
-import { AddressForm } from './address-form';
+import { AddressManager } from './address-manager';
 import { AvatarUpload } from './avatar-upload';
 import { updateUserProfile } from '@/lib/users';
 import { uploadUserAvatar, deleteUserAvatar } from '@/lib/storage';
+import { useAddressManager } from '@/hooks/useAddressManager';
 import type { UserProfile } from '@/types/auth';
 
 interface ProfileEditorProps {
@@ -21,6 +22,15 @@ export function ProfileEditor({ userProfile, onUpdate }: ProfileEditorProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const {
+    addresses,
+    loading: addressesLoading,
+    addAddress,
+    updateAddress,
+    deleteAddress,
+    setDefaultAddress
+  } = useAddressManager();
 
   const handleAvatarUpload = async (file: File) => {
     setLoading(true);
@@ -54,26 +64,10 @@ export function ProfileEditor({ userProfile, onUpdate }: ProfileEditorProps) {
 
     try {
       await updateUserProfile(userProfile.uid, data);
-      setSuccess('Informações pessoais atualizadas com sucesso!');
+      setSuccess('Perfil atualizado com sucesso!');
       onUpdate();
     } catch (err) {
-      setError('Erro ao atualizar informações. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddressSubmit = async (address: UserProfile['address']) => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      await updateUserProfile(userProfile.uid, { address });
-      setSuccess('Endereço atualizado com sucesso!');
-      onUpdate();
-    } catch (err) {
-      setError('Erro ao atualizar endereço. Tente novamente.');
+      setError('Erro ao atualizar perfil. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -81,52 +75,56 @@ export function ProfileEditor({ userProfile, onUpdate }: ProfileEditorProps) {
 
   return (
     <div className="space-y-6">
-      <AvatarUpload
-        currentPhotoURL={userProfile.photoURL}
-        onFileSelect={handleAvatarUpload}
-        loading={loading}
-      />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="w-full sm:w-1/3">
+          <AvatarUpload
+            photoURL={userProfile.photoURL}
+            onUpload={handleAvatarUpload}
+            loading={loading}
+          />
+        </div>
 
-      <div className="flex flex-wrap gap-4">
-        <Button
-          variant={activeSection === 'personal' ? 'primary' : 'outline'}
-          onClick={() => setActiveSection('personal')}
-          className="flex items-center gap-2"
-        >
-          <UserCircle className="h-4 w-4" />
-          Informações Pessoais
-        </Button>
-        <Button
-          variant={activeSection === 'address' ? 'primary' : 'outline'}
-          onClick={() => setActiveSection('address')}
-          className="flex items-center gap-2"
-        >
-          <MapPin className="h-4 w-4" />
-          Endereço
-        </Button>
+        <div className="w-full sm:w-2/3 space-y-4">
+          <div className="flex space-x-2">
+            <Button
+              variant={activeSection === 'personal' ? 'default' : 'outline'}
+              onClick={() => setActiveSection('personal')}
+              className="flex-1"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Dados Pessoais
+            </Button>
+            <Button
+              variant={activeSection === 'address' ? 'default' : 'outline'}
+              onClick={() => setActiveSection('address')}
+              className="flex-1"
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Endereços
+            </Button>
+          </div>
+
+          {error && <Feedback type="error" message={error} />}
+          {success && <Feedback type="success" message={success} />}
+
+          {activeSection === 'personal' ? (
+            <PersonalInfoForm
+              initialData={userProfile}
+              onSubmit={handlePersonalInfoSubmit}
+              loading={loading}
+            />
+          ) : (
+            <AddressManager
+              addresses={addresses}
+              onAddAddress={addAddress}
+              onUpdateAddress={updateAddress}
+              onDeleteAddress={deleteAddress}
+              onSetDefaultAddress={setDefaultAddress}
+              loading={addressesLoading}
+            />
+          )}
+        </div>
       </div>
-
-      {error && (
-        <Feedback type="error" message={error} />
-      )}
-
-      {success && (
-        <Feedback type="success" message={success} />
-      )}
-
-      {activeSection === 'personal' ? (
-        <PersonalInfoForm
-          userProfile={userProfile}
-          onSubmit={handlePersonalInfoSubmit}
-          loading={loading}
-        />
-      ) : (
-        <AddressForm
-          address={userProfile.address}
-          onSubmit={handleAddressSubmit}
-          loading={loading}
-        />
-      )}
     </div>
   );
 }
